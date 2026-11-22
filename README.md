@@ -12,6 +12,14 @@ O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar 
 
 Uma ⭐ aqui no GitHub também ajuda.
 
+## Novidades da 2.1.0
+- **5 idiomas:** português, English, Español, Français e Deutsch.
+- **Escolha do idioma:** na primeira vez o app usa o idioma do Windows, ou inglês se não houver tradução. Para trocar, use a aba **Aparência → Idioma / Language**.
+- **O que é traduzido:** o menu, o bloco de senhas no jogo, as caixinhas de anotar e apagar, os prints, os avisos de atualização e o menu da bandeja. A troca vale na hora.
+- Os botões do menu se ajustam ao tamanho do texto em cada idioma.
+
+*Languages: Português, English, Español, Français, Deutsch — choose in **Appearance → Language**.*
+
 ## Novidades da 2.0.1
 - **Aba Sobre** no menu com as informações do app e do desenvolvedor, o botão **Copiar chave PIX** para apoiar o projeto e links para a página do projeto, as novidades, relatar um problema, sugerir uma ideia e o perfil do desenvolvedor.
 - A aba também tem **Procurar atualização** e um botão para abrir a pasta dos dados.
@@ -50,6 +58,7 @@ Uma ⭐ aqui no GitHub também ajuda.
 - Senhas na tela: suas ou compartilhadas com o grupo (criptografadas, via ntfy.sh)
 - Print da tela enviado para o grupo
 - Menu lateral com temas e 5 posições
+- 5 idiomas (português, inglês, espanhol, francês e alemão)
 - Atualização pelo GitHub e pelo grupo, com confirmação e só versões assinadas pelo autor
 
 ## Atalhos padrão

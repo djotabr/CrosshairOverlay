@@ -113,11 +113,11 @@ class ShotViewer : Form
     void ShowIndex()
     {
         var l = getShots();
-        if (l.Count == 0) { pic.Image = null; info.Text = "Nenhum print ainda   •   Esc fecha"; return; }
+        if (l.Count == 0) { pic.Image = null; info.Text = L.T("Nenhum print ainda   •   Esc fecha"); return; }
         index = Util.Clamp(index, 0, l.Count - 1);
         var s = l[index];
         pic.Image = s.Image;
-        info.Text = "Print de " + s.Author + "  —  " + s.Time.ToString("HH:mm:ss") + "   (" + (index + 1) + "/" + l.Count + ")   •   ← → outros   •   Esc fecha";
+        info.Text = L.T("Print de ") + s.Author + "  —  " + s.Time.ToString("HH:mm:ss") + "   (" + (index + 1) + "/" + l.Count + L.T(")   •   ← → outros   •   Esc fecha");
     }
 
     public void Open(Rectangle screen)

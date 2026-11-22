@@ -60,7 +60,7 @@ class SettingsForm : Form
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
-        Text = "Crosshair Overlay — by " + AppInfo.Author;
+        Text = L.T("Crosshair Overlay — by ") + AppInfo.Author;
         FormBorderStyle = FormBorderStyle.None;   // menu sem bordas, semitransparente, por cima do jogo
         MaximizeBox = false;
         Opacity = Util.Clamp(app.Settings.MenuOpacity, 40, 100) / 100.0;
@@ -301,6 +301,8 @@ class SettingsForm : Form
             BackColor = INPUT, ForeColor = FG, Margin = new Padding(0, 0, 6, 6)
         };
         b.FlatAppearance.MouseOverBackColor = Ui.Mix(INPUT, FG, 0.1);
+        // traduções têm tamanhos diferentes: o botão cresce para caber o texto
+        b.Width = Math.Max(w, TextRenderer.MeasureText(text.Replace("&&", "&"), Font).Width + 24);
         if (click != null) b.Click += click;
         return b;
     }
@@ -478,10 +480,10 @@ class SettingsForm : Form
         Controls.Add(title);
         MakeDraggable(title);
         title.BackColor = Color.Transparent;
-        var credit = new Label { Text = "Feito por", ForeColor = DIM, Location = new Point(60, 43), AutoSize = true };
+        var credit = new Label { Text = L.T("Feito por"), ForeColor = DIM, Location = new Point(60, 43), AutoSize = true };
         var author = new Label { Text = AppInfo.Author, ForeColor = FG, Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true };
         var ver = new Label { Text = "v" + AppInfo.Version, ForeColor = DIM, AutoSize = true };
-        var esc = escLbl = new Label { Text = "Esc fecha", ForeColor = DIM, AutoSize = true };
+        var esc = escLbl = new Label { Text = L.T("Esc fecha"), ForeColor = DIM, AutoSize = true };
         Controls.AddRange(new Control[] { credit, author, ver, esc });
         credit.BackColor = author.BackColor = ver.BackColor = esc.BackColor = Color.Transparent;
         if (HasHeader)
@@ -492,7 +494,7 @@ class SettingsForm : Form
         }
         Load += (s, e) => { author.Location = new Point(credit.Right, 43); ver.Location = new Point(author.Right + 6, 43); LayoutPanel(); };
 
-        previewLabel = new Label { Text = "PRÉVIA", Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = ACCENT, AutoSize = true, BackColor = Color.Transparent };
+        previewLabel = new Label { Text = L.T("PRÉVIA"), Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = ACCENT, AutoSize = true, BackColor = Color.Transparent };
         Controls.Add(previewLabel);
         preview = new BufferedPanel { Size = new Size(160, 160) };
         preview.Paint += PaintPreview;
@@ -502,7 +504,7 @@ class SettingsForm : Form
             int zz = z;
             previewButtons.Add(Btn(z + "x", 50, (s, e) => { zoom = zz; preview.Invalidate(); }));
         }
-        string[] bgs = { "Escuro", "Claro", "Cena" };
+        string[] bgs = { L.T("Escuro"), L.T("Claro"), L.T("Cena") };
         for (int i = 0; i < 3; i++)
         {
             int ii = i;
@@ -513,7 +515,7 @@ class SettingsForm : Form
 
     void BuildProfilesPage(FlowLayoutPanel p)
     {
-        Header(p, "Perfil ativo");
+        Header(p, L.T("Perfil ativo"));
         profileCombo = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat,
@@ -525,27 +527,27 @@ class SettingsForm : Form
         };
         p.Controls.Add(profileCombo);
         Flow(p,
-            Btn("Novo", 80, (s, e) => NewProfile(false)),
-            Btn("Duplicar", 80, (s, e) => NewProfile(true)),
-            Btn("Renomear", 80, (s, e) => RenameProfile()),
-            Btn("Excluir", 80, (s, e) => DeleteProfile()));
-        Header(p, "Compartilhar mira");
+            Btn(L.T("Novo"), 80, (s, e) => NewProfile(false)),
+            Btn(L.T("Duplicar"), 80, (s, e) => NewProfile(true)),
+            Btn(L.T("Renomear"), 80, (s, e) => RenameProfile()),
+            Btn(L.T("Excluir"), 80, (s, e) => DeleteProfile()));
+        Header(p, L.T("Compartilhar mira"));
         Flow(p,
-            Btn("Exportar código", 160, (s, e) => ExportCode()),
-            Btn("Importar código", 160, (s, e) => ImportCode()));
-        Note(p, "Exportar copia um código da mira atual. O amigo cola em \"Importar código\".");
+            Btn(L.T("Exportar código"), 160, (s, e) => ExportCode()),
+            Btn(L.T("Importar código"), 160, (s, e) => ImportCode()));
+        Note(p, L.T("Exportar copia um código da mira atual. O amigo cola em \"Importar código\"."));
 
-        Header(p, "Atalhos principais");
+        Header(p, L.T("Atalhos principais"));
         var help = new Label { ForeColor = FG, AutoSize = true, MaximumSize = new Size(RowW, 0), Font = new Font("Segoe UI", 10f), Margin = new Padding(0, 2, 0, 4) };
         refreshers.Add(() => help.Text =
-            "Abrir/fechar este menu:  " + Hotkeys.ToText(app.Settings.MenuKey) +
-            "\nMostrar/ocultar mira:  " + Hotkeys.ToText(app.Settings.ToggleKey) +
-            "\nPróximo perfil:  " + Hotkeys.ToText(app.Settings.NextProfileKey) +
-            "\nLigar/desligar auto-tecla:  " + Hotkeys.ToText(app.Settings.AutoToggleKey) +
-            "\nAnotar / mostrar / apagar senhas:  " + Hotkeys.ToText(app.Settings.NotesAddKey) + " / " + Hotkeys.ToText(app.Settings.NotesToggleKey) + " / " + Hotkeys.ToText(app.Settings.NotesDelKey) +
-            "\nTirar print / ver prints:  " + Hotkeys.ToText(app.Settings.ShotKey) + " / " + Hotkeys.ToText(app.Settings.ShotViewKey));
+            L.T("Abrir/fechar este menu:  ") + Hotkeys.ToText(app.Settings.MenuKey) +
+            L.T("\nMostrar/ocultar mira:  ") + Hotkeys.ToText(app.Settings.ToggleKey) +
+            L.T("\nPróximo perfil:  ") + Hotkeys.ToText(app.Settings.NextProfileKey) +
+            L.T("\nLigar/desligar auto-tecla:  ") + Hotkeys.ToText(app.Settings.AutoToggleKey) +
+            L.T("\nAnotar / mostrar / apagar senhas:  ") + Hotkeys.ToText(app.Settings.NotesAddKey) + " / " + Hotkeys.ToText(app.Settings.NotesToggleKey) + " / " + Hotkeys.ToText(app.Settings.NotesDelKey) +
+            L.T("\nTirar print / ver prints:  ") + Hotkeys.ToText(app.Settings.ShotKey) + " / " + Hotkeys.ToText(app.Settings.ShotViewKey));
         p.Controls.Add(help);
-        Note(p, "Todos os atalhos podem ser trocados nas outras abas.");
+        Note(p, L.T("Todos os atalhos podem ser trocados nas outras abas."));
     }
 
     void PaintPreview(object sender, PaintEventArgs e)
@@ -586,34 +588,34 @@ class SettingsForm : Form
             g.DrawImage(bmp, new Rectangle(cx - (bmp.Width / 2) * zoom, cy - (bmp.Height / 2) * zoom, w, w));
         }
         using (var b = new SolidBrush(Color.FromArgb(150, 0, 0, 0))) g.FillRectangle(b, 6, 6, 74, 20);
-        g.DrawString("Prévia " + zoom + "x", Font, Brushes.White, 10, 8);
+        g.DrawString(L.T("Prévia ") + zoom + "x", Font, Brushes.White, 10, 8);
     }
 
     void NewProfile(bool dup)
     {
-        string name = Prompt.Show(this, dup ? "Duplicar perfil" : "Novo perfil", "Nome do perfil:",
-            dup ? app.Settings.ActiveProfile + " (cópia)" : "Novo perfil");
+        string name = Prompt.Show(this, dup ? L.T("Duplicar perfil") : L.T("Novo perfil"), L.T("Nome do perfil:"),
+            dup ? app.Settings.ActiveProfile + L.T(" (cópia)") : L.T("Novo perfil"));
         if (name == null) return;
         if (!app.CreateProfile(name, dup ? app.Cfg.Clone() : new Config()))
-            MessageBox.Show(this, "Nome inválido ou já existente.", "Perfil", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, L.T("Nome inválido ou já existente."), L.T("Perfil"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
 
     void RenameProfile()
     {
-        string name = Prompt.Show(this, "Renomear perfil", "Novo nome:", app.Settings.ActiveProfile);
+        string name = Prompt.Show(this, L.T("Renomear perfil"), L.T("Novo nome:"), app.Settings.ActiveProfile);
         if (name == null || name == app.Settings.ActiveProfile) return;
         if (!app.RenameProfile(name))
-            MessageBox.Show(this, "Nome inválido ou já existente.", "Perfil", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, L.T("Nome inválido ou já existente."), L.T("Perfil"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
 
     void DeleteProfile()
     {
         if (app.Profiles.Count <= 1)
         {
-            MessageBox.Show(this, "É preciso ter pelo menos um perfil.", "Perfil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, L.T("É preciso ter pelo menos um perfil."), L.T("Perfil"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        if (MessageBox.Show(this, "Excluir o perfil \"" + app.Settings.ActiveProfile + "\"?", "Excluir perfil",
+        if (MessageBox.Show(this, L.T("Excluir o perfil \"") + app.Settings.ActiveProfile + "\"?", L.T("Excluir perfil"),
             MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             app.DeleteActiveProfile();
     }
@@ -623,10 +625,10 @@ class SettingsForm : Form
         try
         {
             Clipboard.SetText(Storage.ToShareCode(app.Cfg));
-            MessageBox.Show(this, "Código da mira copiado para a área de transferência.\nCompartilhe com amigos — eles usam \"Importar código\".",
-                "Exportar", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, L.T("Código da mira copiado para a área de transferência.\nCompartilhe com amigos — eles usam \"Importar código\"."),
+                L.T("Exportar"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-        catch (Exception ex) { MessageBox.Show(this, ex.Message, "Erro"); }
+        catch (Exception ex) { MessageBox.Show(this, ex.Message, L.T("Erro")); }
     }
 
     void ImportCode()
@@ -641,12 +643,12 @@ class SettingsForm : Form
             }
         }
         catch { }
-        string code = Prompt.Show(this, "Importar código", "Cole o código da mira (será aplicado ao perfil atual):", def);
+        string code = Prompt.Show(this, L.T("Importar código"), L.T("Cole o código da mira (será aplicado ao perfil atual):"), def);
         if (code == null) return;
         var c = Storage.FromShareCode(code);
         if (c == null)
         {
-            MessageBox.Show(this, "Código inválido.", "Importar", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, L.T("Código inválido."), L.T("Importar"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
         c.Monitor = app.Cfg.Monitor;
@@ -659,7 +661,7 @@ class SettingsForm : Form
 
     void BuildTabs()
     {
-        string[] names = { "Perfis", "Forma", "Cores", "Posição", "Atalhos && Extras", "Auto-tecla", "Senhas", "Aparência", "Sobre" };
+        string[] names = { L.T("Perfis"), L.T("Forma"), L.T("Cores"), L.T("Posição"), L.T("Atalhos && Extras"), L.T("Auto-tecla"), L.T("Senhas"), L.T("Aparência"), L.T("Sobre") };
         // ícones do Windows (Segoe Fluent Icons): pessoa, mira, paleta, mover, teclado, cronômetro, chave, pincel
         string[] tabIcons = { "\uE77B", "\uE8B3", "\uE790", "\uE759", "\uE765", "\uE916", "\uE192", "\uE771", "\uE946" };
         for (int i = 0; i < names.Length; i++)
@@ -706,55 +708,55 @@ class SettingsForm : Form
 
     void BuildShapePage(FlowLayoutPanel p)
     {
-        Header(p, "Predefinições rápidas");
+        Header(p, L.T("Predefinições rápidas"));
         var btns = new List<Control>();
         for (int i = 0; i < Presets.Names.Length; i++)
         {
             int ii = i;
-            btns.Add(Btn(Presets.Names[i], 118, (s, e) => { Presets.Apply(C, ii); RefreshControls(); Changed(); }));
+            btns.Add(Btn(L.T(Presets.Names[i]), 118, (s, e) => { Presets.Apply(C, ii); RefreshControls(); Changed(); }));
         }
         Flow(p, btns.ToArray());
 
-        Header(p, "Componentes (combine à vontade)");
+        Header(p, L.T("Componentes (combine à vontade)"));
         Flow(p,
-            Chk("Cruz", () => C.ShowCross, v => C.ShowCross = v),
-            Chk("Cruz sem cortes", () => C.ShowSolidCross, v => C.ShowSolidCross = v),
-            Chk("Ponto central", () => C.ShowDot, v => C.ShowDot = v),
-            Chk("Ponto redondo", () => C.DotRound, v => C.DotRound = v),
-            Chk("Círculo", () => C.ShowCircle, v => C.ShowCircle = v),
-            Chk("Quadrado", () => C.ShowSquare, v => C.ShowSquare = v),
-            Chk("Chevron ( ^ )", () => C.ShowChevron, v => C.ShowChevron = v));
+            Chk(L.T("Cruz"), () => C.ShowCross, v => C.ShowCross = v),
+            Chk(L.T("Cruz sem cortes"), () => C.ShowSolidCross, v => C.ShowSolidCross = v),
+            Chk(L.T("Ponto central"), () => C.ShowDot, v => C.ShowDot = v),
+            Chk(L.T("Ponto redondo"), () => C.DotRound, v => C.DotRound = v),
+            Chk(L.T("Círculo"), () => C.ShowCircle, v => C.ShowCircle = v),
+            Chk(L.T("Quadrado"), () => C.ShowSquare, v => C.ShowSquare = v),
+            Chk(L.T("Chevron ( ^ )"), () => C.ShowChevron, v => C.ShowChevron = v));
 
-        Header(p, "Braços da cruz");
+        Header(p, L.T("Braços da cruz"));
         Flow(p,
-            Chk("Cima", () => C.ArmTop, v => C.ArmTop = v),
-            Chk("Baixo", () => C.ArmBottom, v => C.ArmBottom = v),
-            Chk("Esquerda", () => C.ArmLeft, v => C.ArmLeft = v),
-            Chk("Direita", () => C.ArmRight, v => C.ArmRight = v));
+            Chk(L.T("Cima"), () => C.ArmTop, v => C.ArmTop = v),
+            Chk(L.T("Baixo"), () => C.ArmBottom, v => C.ArmBottom = v),
+            Chk(L.T("Esquerda"), () => C.ArmLeft, v => C.ArmLeft = v),
+            Chk(L.T("Direita"), () => C.ArmRight, v => C.ArmRight = v));
 
-        Header(p, "Dimensões");
-        Slider(p, "Comprimento", 0, 200, () => C.Length, v => C.Length = v);
-        Slider(p, "Espessura", 1, 30, () => C.Thickness, v => C.Thickness = v);
-        Slider(p, "Espaço central (gap)", 0, 100, () => C.Gap, v => C.Gap = v);
-        Slider(p, "Tamanho do ponto", 1, 30, () => C.DotSize, v => C.DotSize = v);
-        Slider(p, "Raio círculo/quadrado", 2, 200, () => C.Radius, v => C.Radius = v);
-        Slider(p, "Rotação (graus)", 0, 359, () => C.Rotation, v => C.Rotation = v);
-        Flow(p, Chk("Suavização (anti-aliasing) — bordas mais suaves", () => C.AntiAlias, v => C.AntiAlias = v));
+        Header(p, L.T("Dimensões"));
+        Slider(p, L.T("Comprimento"), 0, 200, () => C.Length, v => C.Length = v);
+        Slider(p, L.T("Espessura"), 1, 30, () => C.Thickness, v => C.Thickness = v);
+        Slider(p, L.T("Espaço central (gap)"), 0, 100, () => C.Gap, v => C.Gap = v);
+        Slider(p, L.T("Tamanho do ponto"), 1, 30, () => C.DotSize, v => C.DotSize = v);
+        Slider(p, L.T("Raio círculo/quadrado"), 2, 200, () => C.Radius, v => C.Radius = v);
+        Slider(p, L.T("Rotação (graus)"), 0, 359, () => C.Rotation, v => C.Rotation = v);
+        Flow(p, Chk(L.T("Suavização (anti-aliasing) — bordas mais suaves"), () => C.AntiAlias, v => C.AntiAlias = v));
 
-        Header(p, "Imagem personalizada (PNG com transparência)");
+        Header(p, L.T("Imagem personalizada (PNG com transparência)"));
         var imgLabel = new Label { AutoSize = true, ForeColor = DIM, Margin = new Padding(0, 7, 0, 0) };
-        refreshers.Add(() => imgLabel.Text = string.IsNullOrEmpty(C.ImagePath) ? "(nenhuma imagem)" : Path.GetFileName(C.ImagePath));
+        refreshers.Add(() => imgLabel.Text = string.IsNullOrEmpty(C.ImagePath) ? L.T("(nenhuma imagem)") : Path.GetFileName(C.ImagePath));
         Flow(p,
-            Chk("Usar imagem", () => C.UseImage, v => C.UseImage = v),
-            Btn("Escolher...", 90, (s, e) => ChooseImage()),
-            Btn("Remover", 80, (s, e) => { C.ImagePath = ""; C.UseImage = false; RefreshControls(); Changed(); }),
+            Chk(L.T("Usar imagem"), () => C.UseImage, v => C.UseImage = v),
+            Btn(L.T("Escolher..."), 90, (s, e) => ChooseImage()),
+            Btn(L.T("Remover"), 80, (s, e) => { C.ImagePath = ""; C.UseImage = false; RefreshControls(); Changed(); }),
             imgLabel);
-        Slider(p, "Escala da imagem (%)", 10, 500, () => C.ImageScale, v => C.ImageScale = v);
+        Slider(p, L.T("Escala da imagem (%)"), 10, 500, () => C.ImageScale, v => C.ImageScale = v);
     }
 
     void ChooseImage()
     {
-        using (var d = new OpenFileDialog { Filter = "Imagens|*.png;*.gif;*.bmp;*.jpg;*.jpeg|Todos|*.*", Title = "Escolher imagem da mira" })
+        using (var d = new OpenFileDialog { Filter = "Imagens|*.png;*.gif;*.bmp;*.jpg;*.jpeg|Todos|*.*", Title = L.T("Escolher imagem da mira") })
         {
             if (d.ShowDialog(this) != DialogResult.OK) return;
             C.ImagePath = d.FileName;
@@ -766,8 +768,8 @@ class SettingsForm : Form
 
     void BuildColorPage(FlowLayoutPanel p)
     {
-        Header(p, "Cor principal");
-        ColorRow(p, "Cor da mira", () => C.MainColor, v => C.MainColor = v);
+        Header(p, L.T("Cor principal"));
+        ColorRow(p, L.T("Cor da mira"), () => C.MainColor, v => C.MainColor = v);
         int[] sw = {
             unchecked((int)0xFF00FF00), unchecked((int)0xFFAFFF00), unchecked((int)0xFF00FFFF), unchecked((int)0xFF1E90FF),
             unchecked((int)0xFFFF00FF), unchecked((int)0xFFFF69B4), unchecked((int)0xFFFF0000), unchecked((int)0xFFFF8C00),
@@ -775,18 +777,18 @@ class SettingsForm : Form
         var sws = new List<Control>();
         foreach (int c in sw) sws.Add(Swatch(c));
         Flow(p, sws.ToArray());
-        Slider(p, "Opacidade (%)", 10, 100, () => C.Opacity, v => C.Opacity = v);
+        Slider(p, L.T("Opacidade (%)"), 10, 100, () => C.Opacity, v => C.Opacity = v);
 
-        Header(p, "Contorno (outline)");
-        Flow(p, Chk("Ativar contorno", () => C.Outline, v => C.Outline = v));
-        Slider(p, "Espessura do contorno", 1, 6, () => C.OutlineThickness, v => C.OutlineThickness = v);
-        ColorRow(p, "Cor do contorno", () => C.OutlineColor, v => C.OutlineColor = v);
+        Header(p, L.T("Contorno (outline)"));
+        Flow(p, Chk(L.T("Ativar contorno"), () => C.Outline, v => C.Outline = v));
+        Slider(p, L.T("Espessura do contorno"), 1, 6, () => C.OutlineThickness, v => C.OutlineThickness = v);
+        ColorRow(p, L.T("Cor do contorno"), () => C.OutlineColor, v => C.OutlineColor = v);
 
-        Header(p, "Efeitos");
-        Flow(p, Chk("Modo RGB (arco-íris animado)", () => C.Rainbow, v => C.Rainbow = v));
-        Slider(p, "Velocidade do RGB", 1, 20, () => C.RainbowSpeed, v => C.RainbowSpeed = v);
-        Note(p, "Dica: ciano, magenta e verde-limão se destacam na maioria dos mapas. " +
-                "O contorno preto mantém a mira visível em fundos claros.");
+        Header(p, L.T("Efeitos"));
+        Flow(p, Chk(L.T("Modo RGB (arco-íris animado)"), () => C.Rainbow, v => C.Rainbow = v));
+        Slider(p, L.T("Velocidade do RGB"), 1, 20, () => C.RainbowSpeed, v => C.RainbowSpeed = v);
+        Note(p, L.T("Dica: ciano, magenta e verde-limão se destacam na maioria dos mapas. ") +
+                L.T("O contorno preto mantém a mira visível em fundos claros."));
     }
 
     void Nudge(int dx, int dy)
@@ -797,34 +799,34 @@ class SettingsForm : Form
 
     void BuildPositionPage(FlowLayoutPanel p)
     {
-        Header(p, "Monitor");
+        Header(p, L.T("Monitor"));
         var mc = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = INPUT, ForeColor = FG, Width = 330 };
         refreshers.Add(() =>
         {
             mc.Items.Clear();
             var sc = Screen.AllScreens;
             for (int i = 0; i < sc.Length; i++)
-                mc.Items.Add("Monitor " + (i + 1) + "  —  " + sc[i].Bounds.Width + "x" + sc[i].Bounds.Height + (sc[i].Primary ? "  (principal)" : ""));
+                mc.Items.Add(L.T("Monitor ") + (i + 1) + "  —  " + sc[i].Bounds.Width + "x" + sc[i].Bounds.Height + (sc[i].Primary ? L.T("  (principal)") : ""));
             mc.SelectedIndex = Util.Clamp(C.Monitor, 0, sc.Length - 1);
         });
         mc.SelectedIndexChanged += (s, e) => { if (suppress) return; C.Monitor = mc.SelectedIndex; Changed(); };
-        Flow(p, Lbl("Exibir no", 80), mc);
+        Flow(p, Lbl(L.T("Exibir no"), 80), mc);
 
-        Header(p, "Deslocamento a partir do centro (pixels)");
-        Slider(p, "Horizontal (X)", -1500, 1500, () => C.OffsetX, v => C.OffsetX = v);
-        Slider(p, "Vertical (Y)", -1500, 1500, () => C.OffsetY, v => C.OffsetY = v);
+        Header(p, L.T("Deslocamento a partir do centro (pixels)"));
+        Slider(p, L.T("Horizontal (X)"), -1500, 1500, () => C.OffsetX, v => C.OffsetX = v);
+        Slider(p, L.T("Vertical (Y)"), -1500, 1500, () => C.OffsetY, v => C.OffsetY = v);
 
-        Header(p, "Ajuste fino");
+        Header(p, L.T("Ajuste fino"));
         Flow(p,
             Btn("↑", 40, (s, e) => Nudge(0, -1)),
             Btn("↓", 40, (s, e) => Nudge(0, 1)),
             Btn("←", 40, (s, e) => Nudge(-1, 0)),
             Btn("→", 40, (s, e) => Nudge(1, 0)),
-            Btn("Centralizar", 100, (s, e) => { C.OffsetX = 0; C.OffsetY = 0; RefreshControls(); Changed(); }),
-            Btn("Posicionar clicando na tela", 200, (s, e) => PickPosition()));
-        Note(p, "Dentro do jogo: Ctrl+Alt+Shift + setas move a mira 1 pixel; Ctrl+Alt+Shift+Home centraliza " +
-                "(pode ser desativado na aba Atalhos & Extras).\n\n" +
-                "Útil para jogos cuja mira não fica exatamente no centro da tela, ou para a terceira pessoa.");
+            Btn(L.T("Centralizar"), 100, (s, e) => { C.OffsetX = 0; C.OffsetY = 0; RefreshControls(); Changed(); }),
+            Btn(L.T("Posicionar clicando na tela"), 200, (s, e) => PickPosition()));
+        Note(p, L.T("Dentro do jogo: Ctrl+Alt+Shift + setas move a mira 1 pixel; Ctrl+Alt+Shift+Home centraliza ") +
+                L.T("(pode ser desativado na aba Atalhos & Extras).\n\n") +
+                L.T("Útil para jogos cuja mira não fica exatamente no centro da tela, ou para a terceira pessoa."));
     }
 
     void PickPosition()
@@ -858,7 +860,7 @@ class SettingsForm : Form
         tb.Enter += (s, e) =>
         {
             app.SuspendHotkeys();
-            tb.Text = "Pressione as teclas...";
+            tb.Text = L.T("Pressione as teclas...");
             tb.BackColor = CAPTURE;
         };
         tb.Leave += (s, e) =>
@@ -892,17 +894,17 @@ class SettingsForm : Form
 
     void BuildExtrasPage(FlowLayoutPanel p)
     {
-        Header(p, "Atalhos globais (funcionam dentro do jogo)");
+        Header(p, L.T("Atalhos globais (funcionam dentro do jogo)"));
         hotkeyStatus = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), ForeColor = DIM, Margin = new Padding(0, 4, 0, 4) };
-        Flow(p, Lbl("Abrir/fechar menu", 170), HotkeyBox(() => app.Settings.MenuKey, v => app.Settings.MenuKey = v));
-        Flow(p, Lbl("Mostrar/ocultar mira", 170), HotkeyBox(() => app.Settings.ToggleKey, v => app.Settings.ToggleKey = v));
-        Flow(p, Lbl("Próximo perfil", 170), HotkeyBox(() => app.Settings.NextProfileKey, v => app.Settings.NextProfileKey = v));
+        Flow(p, Lbl(L.T("Abrir/fechar menu"), 170), HotkeyBox(() => app.Settings.MenuKey, v => app.Settings.MenuKey = v));
+        Flow(p, Lbl(L.T("Mostrar/ocultar mira"), 170), HotkeyBox(() => app.Settings.ToggleKey, v => app.Settings.ToggleKey = v));
+        Flow(p, Lbl(L.T("Próximo perfil"), 170), HotkeyBox(() => app.Settings.NextProfileKey, v => app.Settings.NextProfileKey = v));
         p.Controls.Add(hotkeyStatus);
-        Note(p, "Clique no campo e pressione a nova combinação. Backspace remove o atalho, Esc cancela.");
-        Flow(p, Chk("Ajuste fino com Ctrl+Alt+Shift + setas (Home centraliza)", () => app.Settings.NudgeKeys,
+        Note(p, L.T("Clique no campo e pressione a nova combinação. Backspace remove o atalho, Esc cancela."));
+        Flow(p, Chk(L.T("Ajuste fino com Ctrl+Alt+Shift + setas (Home centraliza)"), () => app.Settings.NudgeKeys,
             v => { app.Settings.NudgeKeys = v; app.SaveSettings(); app.RegisterHotkeys(); hotkeyStatus.Text = app.HotkeyStatus; }));
 
-        Header(p, "Jogo detectado");
+        Header(p, L.T("Jogo detectado"));
         var gameIcon = new PictureBox { Size = new Size(40, 40), SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(0, 4, 10, 4) };
         var gameLbl = new Label { AutoSize = true, MaximumSize = new Size(RowW - 56, 0), ForeColor = FG, Margin = new Padding(0, 4, 0, 4) };
         var mapLbl = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), ForeColor = DIM, Margin = new Padding(0, 4, 0, 4) };
@@ -912,21 +914,21 @@ class SettingsForm : Form
             string linked = app.LinkedProfile(g);
             gameIcon.Image = app.CurrentGameIcon;
             gameIcon.Visible = app.CurrentGameIcon != null;
-            gameLbl.Text = g.Length == 0 ? "Nenhum jogo detectado ainda — abra o jogo e volte para ele uma vez."
-                : "Em execução: " + g + ".exe" + (app.CurrentGameTitle.Length > 0 ? "   (\"" + app.CurrentGameTitle + "\")" : "") +
-                  "\nPerfil vinculado: " + (linked ?? "nenhum");
+            gameLbl.Text = g.Length == 0 ? L.T("Nenhum jogo detectado ainda — abra o jogo e volte para ele uma vez.")
+                : L.T("Em execução: ") + g + ".exe" + (app.CurrentGameTitle.Length > 0 ? "   (\"" + app.CurrentGameTitle + "\")" : "") +
+                  L.T("\nPerfil vinculado: ") + (linked ?? L.T("nenhum"));
             var map = app.GameMap();
-            mapLbl.Text = map.Count == 0 ? "Nenhum jogo vinculado." :
-                "Vínculos:\n" + string.Join("\n", System.Linq.Enumerable.Select(map, kv => "   " + kv.Key + ".exe  →  " + kv.Value));
+            mapLbl.Text = map.Count == 0 ? L.T("Nenhum jogo vinculado.") :
+                L.T("Vínculos:\n") + string.Join("\n", System.Linq.Enumerable.Select(map, kv => "   " + kv.Key + ".exe  →  " + kv.Value));
         });
         Flow(p, gameIcon, gameLbl);
         Flow(p,
-            Btn("Vincular perfil atual a este jogo", 230, (s, e) =>
+            Btn(L.T("Vincular perfil atual a este jogo"), 230, (s, e) =>
             {
                 if (app.CurrentGame.Length == 0) return;
                 var m = app.GameMap(); m[app.CurrentGame] = app.Settings.ActiveProfile; app.SetGameMap(m); RefreshControls();
             }),
-            Btn("Desvincular", 110, (s, e) =>
+            Btn(L.T("Desvincular"), 110, (s, e) =>
             {
                 var m = app.GameMap(); m.Remove(app.CurrentGame); app.SetGameMap(m); RefreshControls();
             }));
@@ -945,57 +947,57 @@ class SettingsForm : Form
             int i = appsCombo.SelectedIndex;
             if (i >= 0 && i < apps.Count) { app.SelectGameManually(apps[i]); RefreshControls(); }
         };
-        Flow(p, Lbl("Não é esse? Escolher:", 160), appsCombo);
+        Flow(p, Lbl(L.T("Não é esse? Escolher:"), 160), appsCombo);
         p.Controls.Add(mapLbl);
-        Flow(p, Chk("Trocar de perfil automaticamente quando o jogo vinculado estiver em foco", () => app.Settings.AutoSwitchProfiles,
+        Flow(p, Chk(L.T("Trocar de perfil automaticamente quando o jogo vinculado estiver em foco"), () => app.Settings.AutoSwitchProfiles,
             v => { app.Settings.AutoSwitchProfiles = v; app.SaveSettings(); }));
-        Flow(p, Chk("Só mostrar o overlay com o jogo em foco (some ao minimizar ou sair do jogo)", () => app.Settings.OnlyInGame,
+        Flow(p, Chk(L.T("Só mostrar o overlay com o jogo em foco (some ao minimizar ou sair do jogo)"), () => app.Settings.OnlyInGame,
             v => app.SetOnlyInGame(v)));
-        Note(p, "O jogo é identificado pelo programa da janela em foco. Escolha o perfil de mira, volte ao jogo, " +
-                "abra este menu e clique em \"Vincular\".");
+        Note(p, L.T("O jogo é identificado pelo programa da janela em foco. Escolha o perfil de mira, volte ao jogo, ") +
+                L.T("abra este menu e clique em \"Vincular\"."));
 
-        Header(p, "Atualização (GitHub e grupo)");
+        Header(p, L.T("Atualização (GitHub e grupo)"));
         var ver = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), Margin = new Padding(0, 4, 0, 4), ForeColor = FG };
         refreshers.Add(() =>
         {
             long staged = Updater.StagedBuild;
-            ver.Text = "Esta versão: " + AppInfo.Version + "  (" + Updater.VersionText + ")" +
-                (staged > BuildInfo.Build ? "\nVersão nova baixada — instala ao fechar o app." : "") +
+            ver.Text = L.T("Esta versão: ") + AppInfo.Version + "  (" + Updater.VersionText + ")" +
+                (staged > BuildInfo.Build ? L.T("\nVersão nova baixada — instala ao fechar o app.") : "") +
                 (app.UpdateStatus.Length > 0 ? "\n" + app.UpdateStatus : "");
         });
         p.Controls.Add(ver);
-        Flow(p, Chk("Avisar quando sair versão nova (GitHub e grupo)", () => app.Settings.AutoUpdate, v => { app.Settings.AutoUpdate = v; app.SaveSettings(); }));
-        var upNow = Btn("Reiniciar e atualizar", 160, (s, e) => app.UpdateNow());
-        var check = Btn("Procurar atualização", 160, (s, e) => app.CheckGitHubUpdate(true));
-        var dl = Btn("Baixar atualização", 150, (s, e) => app.DownloadOffer());
+        Flow(p, Chk(L.T("Avisar quando sair versão nova (GitHub e grupo)"), () => app.Settings.AutoUpdate, v => { app.Settings.AutoUpdate = v; app.SaveSettings(); }));
+        var upNow = Btn(L.T("Reiniciar e atualizar"), 160, (s, e) => app.UpdateNow());
+        var check = Btn(L.T("Procurar atualização"), 160, (s, e) => app.CheckGitHubUpdate(true));
+        var dl = Btn(L.T("Baixar atualização"), 150, (s, e) => app.DownloadOffer());
         refreshers.Add(() => dl.Enabled = app.UpdateAvailable);
         refreshers.Add(() => upNow.Enabled = Updater.StagedBuild > BuildInfo.Build);
         if (Updater.IsAuthor)
-            Flow(p, check, dl, upNow, Btn("Enviar esta versão ao grupo", 200, (s, e) => app.ShareUpdate(true)));
+            Flow(p, check, dl, upNow, Btn(L.T("Enviar esta versão ao grupo"), 200, (s, e) => app.ShareUpdate(true)));
         else
             Flow(p, check, dl, upNow);
-        Note(p, "O app confere o GitHub (" + AppInfo.Repo + ") ao abrir e a cada 3 horas. Quando sai versão nova, ele pergunta se pode baixar e, depois, se pode reiniciar para instalar. Durante o jogo ele espera você sair para perguntar. " +
-                "Pelo grupo é ainda mais rápido: quando o autor clica em \"Enviar esta versão ao grupo\", quem está na sala recebe na hora. " +
-                "A versão só é aceita se estiver assinada pelo autor, então ninguém consegue mandar um programa falso. " +
-                "Quem entra depois recebe a versão de quem já tem (o servidor guarda o arquivo por ~3 horas).");
+        Note(p, L.T("O app confere o GitHub (") + AppInfo.Repo + L.T(") ao abrir e a cada 3 horas. Quando sai versão nova, ele pergunta se pode baixar e, depois, se pode reiniciar para instalar. Durante o jogo ele espera você sair para perguntar. ") +
+                L.T("Pelo grupo é ainda mais rápido: quando o autor clica em \"Enviar esta versão ao grupo\", quem está na sala recebe na hora. ") +
+                L.T("A versão só é aceita se estiver assinada pelo autor, então ninguém consegue mandar um programa falso. ") +
+                L.T("Quem entra depois recebe a versão de quem já tem (o servidor guarda o arquivo por ~3 horas)."));
 
 
-        Header(p, "Comportamento");
-        Flow(p, Chk("Ocultar a mira enquanto segura o botão direito (mirar / ADS)", () => C.HideOnRightClick, v => C.HideOnRightClick = v));
-        Flow(p, Chk("Iniciar com o Windows", () => Storage.GetAutoStart(), v => Storage.SetAutoStart(v)));
+        Header(p, L.T("Comportamento"));
+        Flow(p, Chk(L.T("Ocultar a mira enquanto segura o botão direito (mirar / ADS)"), () => C.HideOnRightClick, v => C.HideOnRightClick = v));
+        Flow(p, Chk(L.T("Iniciar com o Windows"), () => Storage.GetAutoStart(), v => Storage.SetAutoStart(v)));
 
-        Header(p, "Sobre");
-        Note(p, AppInfo.Name + " v" + AppInfo.Version + "\nFeito por " + AppInfo.Author + " — © 2026 " + AppInfo.Author + ". Todos os direitos reservados.");
+        Header(p, L.T("Sobre"));
+        Note(p, AppInfo.Name + " v" + AppInfo.Version + L.T("\nFeito por ") + AppInfo.Author + " — © 2026 " + AppInfo.Author + L.T(". Todos os direitos reservados."));
 
-        Header(p, "Dicas");
-        Note(p, "• Use o jogo em modo Janela ou Janela sem bordas (Borderless). Em Tela cheia exclusiva o Windows " +
-                "não permite desenhar nada por cima do jogo.\n" +
-                "• A mira não interage com o mouse nem com o jogo — é apenas uma camada visual.\n" +
-                "• Clique com o botão direito no ícone da bandeja para trocar de perfil ou sair.");
+        Header(p, L.T("Dicas"));
+        Note(p, L.T("• Use o jogo em modo Janela ou Janela sem bordas (Borderless). Em Tela cheia exclusiva o Windows ") +
+                L.T("não permite desenhar nada por cima do jogo.\n") +
+                L.T("• A mira não interage com o mouse nem com o jogo — é apenas uma camada visual.\n") +
+                L.T("• Clique com o botão direito no ícone da bandeja para trocar de perfil ou sair."));
         Flow(p,
-            Btn("Abrir pasta de perfis", 160, (s, e) => { try { Directory.CreateDirectory(Storage.Dir); Process.Start(Storage.Dir); } catch { } }),
-            Btn("Ocultar/mostrar mira", 160, (s, e) => app.ToggleVisible()),
-            Btn("Sair do programa", 140, (s, e) => app.Exit()));
+            Btn(L.T("Abrir pasta de perfis"), 160, (s, e) => { try { Directory.CreateDirectory(Storage.Dir); Process.Start(Storage.Dir); } catch { } }),
+            Btn(L.T("Ocultar/mostrar mira"), 160, (s, e) => app.ToggleVisible()),
+            Btn(L.T("Sair do programa"), 140, (s, e) => app.Exit()));
     }
 
     // ---------- Auto-tecla ----------
@@ -1009,7 +1011,7 @@ class SettingsForm : Form
             Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center, ShortcutsEnabled = false, Margin = new Padding(0, 3, 6, 3)
         };
         refreshers.Add(() => { if (!tb.Focused) tb.Text = Hotkeys.ToText(get()); });
-        tb.Enter += (s, e) => { app.SuspendHotkeys(); tb.Text = "Pressione uma tecla..."; tb.BackColor = CAPTURE; };
+        tb.Enter += (s, e) => { app.SuspendHotkeys(); tb.Text = L.T("Pressione uma tecla..."); tb.BackColor = CAPTURE; };
         tb.Leave += (s, e) => { tb.BackColor = INPUT; tb.Text = Hotkeys.ToText(get()); app.RegisterHotkeys(); };
         tb.PreviewKeyDown += (s, e) => { e.IsInputKey = true; };
         tb.KeyDown += (s, e) =>
@@ -1039,7 +1041,7 @@ class SettingsForm : Form
             BackColor = INPUT, ForeColor = FG, BorderStyle = BorderStyle.None, TextAlign = HorizontalAlignment.Right
         };
         decimal mul = seconds ? 1000m : 1m;
-        var unit = new Label { Text = seconds ? "segundos" : "ms", Location = new Point(296, 8), AutoSize = true, ForeColor = DIM };
+        var unit = new Label { Text = seconds ? L.T("segundos") : "ms", Location = new Point(296, 8), AutoSize = true, ForeColor = DIM };
         nud.ValueChanged += (s, e) => { if (suppress) return; set((int)Math.Round(nud.Value * mul)); app.SaveSettings(); };
         refreshers.Add(() => nud.Value = Math.Min(nud.Maximum, Math.Max(nud.Minimum, get() / mul)));
         row.Controls.AddRange(new Control[] { l, nud, unit });
@@ -1052,12 +1054,12 @@ class SettingsForm : Form
         string fixedLabel, Func<int> getFixed, Action<int> setFixed,
         Func<int> getMin, Action<int> setMin, Func<int> getMax, Action<int> setMax)
     {
-        var rbFixed = new ModernRadio { Text = "Fixo", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
-        var rbRand = new ModernRadio { Text = "Aleatório (entre mínimo e máximo)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        var rbFixed = new ModernRadio { Text = L.T("Fixo"), AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        var rbRand = new ModernRadio { Text = L.T("Aleatório (entre mínimo e máximo)"), AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
         Flow(p, rbFixed, rbRand);
         var fixedRow = TimeRow(p, fixedLabel, seconds, getFixed, setFixed);
-        var minRow = TimeRow(p, "Mínimo", seconds, getMin, setMin);
-        var maxRow = TimeRow(p, "Máximo", seconds, getMax, setMax);
+        var minRow = TimeRow(p, L.T("Mínimo"), seconds, getMin, setMin);
+        var maxRow = TimeRow(p, L.T("Máximo"), seconds, getMax, setMax);
         rbRand.CheckedChanged += (s, e) =>
         {
             fixedRow.Visible = !rbRand.Checked; minRow.Visible = maxRow.Visible = rbRand.Checked;
@@ -1076,62 +1078,62 @@ class SettingsForm : Form
     {
         var S = app.Settings;
 
-        Header(p, "Status");
+        Header(p, L.T("Status"));
         var status = new Label { Width = 200, Height = 28, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
-        var startBtn = Btn("Ligar", 120, (s, e) => app.ToggleAuto());
+        var startBtn = Btn(L.T("Ligar"), 120, (s, e) => app.ToggleAuto());
         refreshers.Add(() =>
         {
             bool on = app.Auto.Running;
-            status.Text = on ? "● LIGADO" : "○ Desligado";
+            status.Text = on ? L.T("● LIGADO") : L.T("○ Desligado");
             status.ForeColor = on ? ACCENT : DIM;
-            startBtn.Text = on ? "Parar" : "Ligar";
+            startBtn.Text = on ? L.T("Parar") : L.T("Ligar");
         });
         Flow(p, status, startBtn);
 
-        Header(p, "Teclas (até 3)");
-        Flow(p, Lbl("Tecla 1", 80), KeyBox(() => S.AutoKey1, v => S.AutoKey1 = v));
-        Flow(p, Lbl("Tecla 2", 80), KeyBox(() => S.AutoKey2, v => S.AutoKey2 = v));
-        Flow(p, Lbl("Tecla 3", 80), KeyBox(() => S.AutoKey3, v => S.AutoKey3 = v));
-        Note(p, "Clique no campo e pressione a tecla. Backspace deixa o campo vazio (\"Nenhum\").");
-        var rbSeq = new ModernRadio { Text = "Em sequência (1 → 2 → 3)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
-        var rbTog = new ModernRadio { Text = "Todas juntas (combinação)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        Header(p, L.T("Teclas (até 3)"));
+        Flow(p, Lbl(L.T("Tecla 1"), 80), KeyBox(() => S.AutoKey1, v => S.AutoKey1 = v));
+        Flow(p, Lbl(L.T("Tecla 2"), 80), KeyBox(() => S.AutoKey2, v => S.AutoKey2 = v));
+        Flow(p, Lbl(L.T("Tecla 3"), 80), KeyBox(() => S.AutoKey3, v => S.AutoKey3 = v));
+        Note(p, L.T("Clique no campo e pressione a tecla. Backspace deixa o campo vazio (\"Nenhum\")."));
+        var rbSeq = new ModernRadio { Text = L.T("Em sequência (1 → 2 → 3)"), AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        var rbTog = new ModernRadio { Text = L.T("Todas juntas (combinação)"), AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
         rbTog.CheckedChanged += (s, e) => { if (suppress) return; S.AutoTogether = rbTog.Checked; app.SaveSettings(); };
         refreshers.Add(() => { rbTog.Checked = S.AutoTogether; rbSeq.Checked = !S.AutoTogether; });
         Flow(p, rbSeq, rbTog);
 
-        Header(p, "Intervalo entre cada pressionamento");
+        Header(p, L.T("Intervalo entre cada pressionamento"));
         FixedOrRandom(p, true, () => S.AutoRandom, v => S.AutoRandom = v,
-            "Intervalo", () => S.AutoIntervalMs, v => S.AutoIntervalMs = v,
+            L.T("Intervalo"), () => S.AutoIntervalMs, v => S.AutoIntervalMs = v,
             () => S.AutoMinMs, v => S.AutoMinMs = v, () => S.AutoMaxMs, v => S.AutoMaxMs = v);
-        Note(p, "Em sequência, o intervalo vale entre cada tecla: 1, espera, 2, espera, 3, espera, 1...\n" +
-                "Com \"Todas juntas\", vale entre cada combinação.");
+        Note(p, L.T("Em sequência, o intervalo vale entre cada tecla: 1, espera, 2, espera, 3, espera, 1...\n") +
+                L.T("Com \"Todas juntas\", vale entre cada combinação."));
 
-        Header(p, "Tempo segurando cada tecla");
+        Header(p, L.T("Tempo segurando cada tecla"));
         FixedOrRandom(p, false, () => S.AutoHoldRandom, v => S.AutoHoldRandom = v,
-            "Duração", () => S.AutoHoldMs, v => S.AutoHoldMs = v,
+            L.T("Duração"), () => S.AutoHoldMs, v => S.AutoHoldMs = v,
             () => S.AutoHoldMinMs, v => S.AutoHoldMinMs = v, () => S.AutoHoldMaxMs, v => S.AutoHoldMaxMs = v);
 
-        Header(p, "Aviso sonoro");
-        Flow(p, Chk("Tocar um bipe a cada aperto (tom diferente para cada tecla)", () => S.AutoSound, v => { S.AutoSound = v; app.SaveSettings(); }));
-        Slider(p, "Volume do bipe (%)", 0, 100, () => S.AutoVolume, v => { S.AutoVolume = v; app.SaveSettings(); });
-        Flow(p, Btn("Testar som", 110, (s, e) => { Beeper.Play(0, S.AutoVolume); })); 
+        Header(p, L.T("Aviso sonoro"));
+        Flow(p, Chk(L.T("Tocar um bipe a cada aperto (tom diferente para cada tecla)"), () => S.AutoSound, v => { S.AutoSound = v; app.SaveSettings(); }));
+        Slider(p, L.T("Volume do bipe (%)"), 0, 100, () => S.AutoVolume, v => { S.AutoVolume = v; app.SaveSettings(); });
+        Flow(p, Btn(L.T("Testar som"), 110, (s, e) => { Beeper.Play(0, S.AutoVolume); })); 
 
-        Header(p, "Contador no overlay");
-        Flow(p, Chk("Mostrar contador regressivo de cada tecla na tela", () => S.AutoHud, v => { S.AutoHud = v; app.SaveSettings(); }));
+        Header(p, L.T("Contador no overlay"));
+        Flow(p, Chk(L.T("Mostrar contador regressivo de cada tecla na tela"), () => S.AutoHud, v => { S.AutoHud = v; app.SaveSettings(); }));
         var posCombo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat, BackColor = INPUT, ForeColor = FG, Width = 240 };
-        posCombo.Items.AddRange(AutoHud.PositionNames);
+        posCombo.Items.AddRange(Array.ConvertAll(AutoHud.PositionNames, L.T));
         posCombo.SelectedIndexChanged += (s, e) => { if (suppress) return; S.AutoHudPos = posCombo.SelectedIndex; app.SaveSettings(); };
         refreshers.Add(() => posCombo.SelectedIndex = Util.Clamp(S.AutoHudPos, 0, AutoHud.PositionNames.Length - 1));
-        Flow(p, Lbl("Posição", 80), posCombo);
-        Slider(p, "Tamanho do contador (%)", 50, 300, () => S.AutoHudScale, v => { S.AutoHudScale = v; app.SaveSettings(); });
-        Note(p, "Cada tecla aparece numa caixinha com o tempo até o próximo aperto. A caixa fica verde quando a tecla é apertada.");
+        Flow(p, Lbl(L.T("Posição"), 80), posCombo);
+        Slider(p, L.T("Tamanho do contador (%)"), 50, 300, () => S.AutoHudScale, v => { S.AutoHudScale = v; app.SaveSettings(); });
+        Note(p, L.T("Cada tecla aparece numa caixinha com o tempo até o próximo aperto. A caixa fica verde quando a tecla é apertada."));
 
-        Header(p, "Atalho para ligar/desligar");
-        Flow(p, Lbl("Ligar/desligar", 170), HotkeyBox(() => S.AutoToggleKey, v => S.AutoToggleKey = v));
-        Note(p, "• Sempre começa desligado ao abrir o programa.\n" +
-                "• As teclas vão para a janela em foco (o jogo). Enquanto esta janela de configurações " +
-                "estiver em foco, nada é enviado.\n" +
-                "• Atenção: alguns jogos com anti-cheat proíbem automação de teclas — use por sua conta e risco.");
+        Header(p, L.T("Atalho para ligar/desligar"));
+        Flow(p, Lbl(L.T("Ligar/desligar"), 170), HotkeyBox(() => S.AutoToggleKey, v => S.AutoToggleKey = v));
+        Note(p, L.T("• Sempre começa desligado ao abrir o programa.\n") +
+                L.T("• As teclas vão para a janela em foco (o jogo). Enquanto esta janela de configurações ") +
+                L.T("estiver em foco, nada é enviado.\n") +
+                L.T("• Atenção: alguns jogos com anti-cheat proíbem automação de teclas — use por sua conta e risco."));
     }
 
     // ---------- Sobre: desenvolvedor, apoio, links ----------
@@ -1151,29 +1153,29 @@ class SettingsForm : Form
     {
         Header(p, "Crosshair Overlay");
         var info = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), ForeColor = FG, Font = Ui.Font(10f), Margin = new Padding(0, 0, 0, 6) };
-        info.Text = "Versão " + AppInfo.Version + "   •   compilada em " + Updater.BuildDate(BuildInfo.Build) +
-                    "\nFeito por " + AppInfo.Author;
+        info.Text = L.T("Versão ") + AppInfo.Version + L.T("   •   compilada em ") + Updater.BuildDate(BuildInfo.Build) +
+                    L.T("\nFeito por ") + AppInfo.Author;
         p.Controls.Add(info);
-        Note(p, "Mira sobreposta para jogos, com auto-tecla, senhas e prints compartilhados com o grupo. " +
-                "Gratuito, com o código no GitHub. Não lê nem mexe na memória do jogo: só desenha por cima da tela.");
+        Note(p, L.T("Mira sobreposta para jogos, com auto-tecla, senhas e prints compartilhados com o grupo. ") +
+                L.T("Gratuito, com o código no GitHub. Não lê nem mexe na memória do jogo: só desenha por cima da tela."));
 
-        Header(p, "Apoie o projeto");
-        Note(p, "O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar o desenvolvimento com um PIX de qualquer valor. 💚");
+        Header(p, L.T("Apoie o projeto"));
+        Note(p, L.T("O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar o desenvolvimento com um PIX de qualquer valor. 💚"));
         bool hasPix = AppInfo.PixKey.Length > 0;
         var pixLbl = new Label
         {
             AutoSize = true, MaximumSize = new Size(RowW, 0), Font = new Font("Consolas", 10.5f), Margin = new Padding(0, 2, 0, 6),
-            ForeColor = hasPix ? FG : DIM, Text = hasPix ? "Chave PIX: " + AppInfo.PixKey : "Chave PIX ainda não configurada."
+            ForeColor = hasPix ? FG : DIM, Text = hasPix ? L.T("Chave PIX: ") + AppInfo.PixKey : L.T("Chave PIX ainda não configurada.")
         };
         var copied = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), ForeColor = ACCENT, Margin = new Padding(0, 0, 0, 4) };
-        var pix = (RoundButton)Btn("Copiar chave PIX", 200, (s, e) =>
+        var pix = (RoundButton)Btn(L.T("Copiar chave PIX"), 200, (s, e) =>
         {
             try
             {
                 Clipboard.SetText(AppInfo.PixKey);
-                copied.Text = "Chave copiada! No app do seu banco: Pix → Pagar com chave → cole. Obrigado! 💚";
+                copied.Text = L.T("Chave copiada! No app do seu banco: Pix → Pagar com chave → cole. Obrigado! 💚");
             }
-            catch { copied.Text = "Não consegui copiar — anote a chave acima."; }
+            catch { copied.Text = L.T("Não consegui copiar — anote a chave acima."); }
         });
         pix.Glyph = "\uE00B";
         pix.Height = 38;
@@ -1185,26 +1187,26 @@ class SettingsForm : Form
         Flow(p, pix);
         p.Controls.Add(pixLbl);
         p.Controls.Add(copied);
-        Flow(p, LinkBtn("\uE734", "Deixar uma estrela no GitHub", 250, AppInfo.RepoUrl));
-        Note(p, "A estrelinha no GitHub também ajuda: deixa o projeto mais fácil de achar.");
+        Flow(p, LinkBtn("\uE734", L.T("Deixar uma estrela no GitHub"), 250, AppInfo.RepoUrl));
+        Note(p, L.T("A estrelinha no GitHub também ajuda: deixa o projeto mais fácil de achar."));
 
-        Header(p, "Links");
+        Header(p, L.T("Links"));
         Flow(p,
-            LinkBtn("\uE71B", "Página do projeto", 245, AppInfo.RepoUrl),
-            LinkBtn("\uE8F2", "Novidades e versões", 245, AppInfo.RepoUrl + "/releases"));
+            LinkBtn("\uE71B", L.T("Página do projeto"), 245, AppInfo.RepoUrl),
+            LinkBtn("\uE8F2", L.T("Novidades e versões"), 245, AppInfo.RepoUrl + "/releases"));
         Flow(p,
-            LinkBtn("\uE7BA", "Relatar um problema", 245, AppInfo.RepoUrl + "/issues/new"),
-            LinkBtn("\uE8BD", "Sugerir uma ideia", 245, AppInfo.RepoUrl + "/issues/new"));
-        Flow(p, LinkBtn("\uE77B", "Perfil do desenvolvedor", 245, AppInfo.AuthorUrl));
-        Note(p, "Para relatar um problema ou sugerir uma ideia é preciso ter uma conta (grátis) no GitHub.");
+            LinkBtn("\uE7BA", L.T("Relatar um problema"), 245, AppInfo.RepoUrl + "/issues/new"),
+            LinkBtn("\uE8BD", L.T("Sugerir uma ideia"), 245, AppInfo.RepoUrl + "/issues/new"));
+        Flow(p, LinkBtn("\uE77B", L.T("Perfil do desenvolvedor"), 245, AppInfo.AuthorUrl));
+        Note(p, L.T("Para relatar um problema ou sugerir uma ideia é preciso ter uma conta (grátis) no GitHub."));
 
-        Header(p, "Informações");
+        Header(p, L.T("Informações"));
         Flow(p,
-            Btn("Procurar atualização", 170, (s, e) => { app.CheckGitHubUpdate(true); ShowPage(4); }),
-            Btn("Abrir pasta dos dados", 170, (s, e) => { try { Process.Start("explorer.exe", "\"" + Storage.Dir + "\""); } catch { } }));
-        Note(p, "Pasta dos dados (perfis, configurações, senhas e prints):\n" + Storage.Dir);
-        Note(p, "Créditos: ícones Segoe Fluent Icons (Windows) • sincronização do grupo pelo ntfy.sh • " +
-                "feito em C# com o .NET Framework que já vem no Windows.\n\n© 2026 " + AppInfo.Author + ". Todos os direitos reservados.");
+            Btn(L.T("Procurar atualização"), 170, (s, e) => { app.CheckGitHubUpdate(true); ShowPage(4); }),
+            Btn(L.T("Abrir pasta dos dados"), 170, (s, e) => { try { Process.Start("explorer.exe", "\"" + Storage.Dir + "\""); } catch { } }));
+        Note(p, L.T("Pasta dos dados (perfis, configurações, senhas e prints):\n") + Storage.Dir);
+        Note(p, L.T("Créditos: ícones Segoe Fluent Icons (Windows) • sincronização do grupo pelo ntfy.sh • ") +
+                L.T("feito em C# com o .NET Framework que já vem no Windows.\n\n© 2026 ") + AppInfo.Author + L.T(". Todos os direitos reservados."));
     }
 
     // ---------- Aparência: posição e tema do menu ----------
@@ -1212,8 +1214,26 @@ class SettingsForm : Form
     void BuildLookPage(FlowLayoutPanel p)
     {
         var S = app.Settings;
-        Header(p, "Posição do menu");
-        string[] posNames = { "Esquerda", "Direita", "Em cima", "Embaixo", "Janela (como antes)" };
+        Header(p, L.T("Idioma") + (L.Code == "en" ? "" : "  /  Language"));
+        var langBtns = new List<Control>();
+        for (int i = -1; i < L.Codes.Length; i++)
+        {
+            string code = i < 0 ? "" : L.Codes[i];
+            string text = i < 0 ? L.T("Automático (Windows)") : L.NativeNames[i];
+            var b = Btn(text, i < 0 ? 170 : 96, (s, e) => app.SetLanguage(code));
+            refreshers.Add(() =>
+            {
+                bool sel = (S.Language ?? "") == code;
+                b.BackColor = sel ? ACCENT_DARK : INPUT;
+                b.ForeColor = sel ? Color.White : FG;
+            });
+            langBtns.Add(b);
+        }
+        Flow(p, langBtns.ToArray());
+        Note(p, L.T("No automático, o app usa o idioma do Windows (ou inglês, se não houver tradução)."));
+
+        Header(p, L.T("Posição do menu"));
+        string[] posNames = { L.T("Esquerda"), L.T("Direita"), L.T("Em cima"), L.T("Embaixo"), L.T("Janela (como antes)") };
         var row = new List<Control>();
         for (int i = 0; i < posNames.Length; i++)
         {
@@ -1223,16 +1243,16 @@ class SettingsForm : Form
             row.Add(b);
         }
         Flow(p, row.ToArray());
-        Note(p, "O menu entra deslizando do lado escolhido. No modo janela ele aparece no meio da tela e dá para arrastar pelo título.");
+        Note(p, L.T("O menu entra deslizando do lado escolhido. No modo janela ele aparece no meio da tela e dá para arrastar pelo título."));
 
-        Header(p, "Tema de cores");
+        Header(p, L.T("Tema de cores"));
         var swatches = new List<Control>();
         foreach (var t in Themes.All)
         {
             var th = t;
             var b = new RoundButton
             {
-                Width = 98, Height = 46, Radius = 10, BackColor = th.Bg, ForeColor = th.Accent, Text = th.Name,
+                Width = 98, Height = 46, Radius = 10, BackColor = th.Bg, ForeColor = th.Accent, Text = L.T(th.Name),
                 Font = new Font("Segoe UI", 8f, FontStyle.Bold), Cursor = Cursors.Hand, Margin = new Padding(0, 0, 6, 6), UseVisualStyleBackColor = false
             };
             b.FlatAppearance.MouseOverBackColor = th.Input;
@@ -1247,11 +1267,11 @@ class SettingsForm : Form
         }
         Flow(p, swatches.ToArray());
         var themeLbl = new Label { AutoSize = true, ForeColor = DIM, Margin = new Padding(0, 2, 0, 4) };
-        refreshers.Add(() => themeLbl.Text = "Tema atual: " + S.MenuTheme);
+        refreshers.Add(() => themeLbl.Text = L.T("Tema atual: ") + L.T(S.MenuTheme));
         p.Controls.Add(themeLbl);
 
-        Header(p, "Tema próprio (mudar cada cor)");
-        Note(p, "Mude qualquer cor abaixo para criar o seu tema. Ele começa como cópia do tema atual e fica salvo como \"Personalizado\".");
+        Header(p, L.T("Tema próprio (mudar cada cor)"));
+        Note(p, L.T("Mude qualquer cor abaixo para criar o seu tema. Ele começa como cópia do tema atual e fica salvo como \"Personalizado\"."));
         Func<MenuTheme> cur = () => Themes.Current(S);
         Action<Action<MenuTheme>> edit = change =>
         {
@@ -1261,17 +1281,17 @@ class SettingsForm : Form
             app.SaveSettings();
             app.RebuildSettings();
         };
-        ColorRow(p, "Destaque", () => cur().Accent.ToArgb(), v => edit(t => t.Accent = Color.FromArgb(v)));
-        ColorRow(p, "Fundo", () => cur().Bg.ToArgb(), v => edit(t => t.Bg = Color.FromArgb(v)));
-        ColorRow(p, "Coluna das abas", () => cur().Nav.ToArgb(), v => edit(t => t.Nav = Color.FromArgb(v)));
-        ColorRow(p, "Campos e botões", () => cur().Input.ToArgb(), v => edit(t => t.Input = Color.FromArgb(v)));
-        ColorRow(p, "Bordas", () => cur().Border.ToArgb(), v => edit(t => t.Border = Color.FromArgb(v)));
-        ColorRow(p, "Texto", () => cur().Text.ToArgb(), v => edit(t => t.Text = Color.FromArgb(v)));
-        ColorRow(p, "Texto secundário", () => cur().Dim.ToArgb(), v => edit(t => t.Dim = Color.FromArgb(v)));
-        Flow(p, Btn("Voltar ao tema padrão", 170, (s, e) => { S.MenuTheme = Themes.Default.Name; app.SaveSettings(); app.RebuildSettings(); }));
+        ColorRow(p, L.T("Destaque"), () => cur().Accent.ToArgb(), v => edit(t => t.Accent = Color.FromArgb(v)));
+        ColorRow(p, L.T("Fundo"), () => cur().Bg.ToArgb(), v => edit(t => t.Bg = Color.FromArgb(v)));
+        ColorRow(p, L.T("Coluna das abas"), () => cur().Nav.ToArgb(), v => edit(t => t.Nav = Color.FromArgb(v)));
+        ColorRow(p, L.T("Campos e botões"), () => cur().Input.ToArgb(), v => edit(t => t.Input = Color.FromArgb(v)));
+        ColorRow(p, L.T("Bordas"), () => cur().Border.ToArgb(), v => edit(t => t.Border = Color.FromArgb(v)));
+        ColorRow(p, L.T("Texto"), () => cur().Text.ToArgb(), v => edit(t => t.Text = Color.FromArgb(v)));
+        ColorRow(p, L.T("Texto secundário"), () => cur().Dim.ToArgb(), v => edit(t => t.Dim = Color.FromArgb(v)));
+        Flow(p, Btn(L.T("Voltar ao tema padrão"), 170, (s, e) => { S.MenuTheme = Themes.Default.Name; app.SaveSettings(); app.RebuildSettings(); }));
 
-        Header(p, "Transparência");
-        Slider(p, "Opacidade do menu (%)", 40, 100, () => S.MenuOpacity,
+        Header(p, L.T("Transparência"));
+        Slider(p, L.T("Opacidade do menu (%)"), 40, 100, () => S.MenuOpacity,
             v => { S.MenuOpacity = v; Opacity = v / 100.0; app.SaveSettings(); });
     }
 
@@ -1285,76 +1305,76 @@ class SettingsForm : Form
     void BuildGroupSection(FlowLayoutPanel p)
     {
         var S = app.Settings;
-        Header(p, "Senhas do grupo (online, grátis)");
-        Flow(p, Chk("Sincronizar senhas com o grupo", () => S.SyncEnabled, v => { S.SyncEnabled = v; app.SaveSettings(); app.RestartSync(); }));
+        Header(p, L.T("Senhas do grupo (online, grátis)"));
+        Flow(p, Chk(L.T("Sincronizar senhas com o grupo"), () => S.SyncEnabled, v => { S.SyncEnabled = v; app.SaveSettings(); app.RestartSync(); }));
 
         var name = Input(200);
         name.TextChanged += (s, e) => { if (suppress) return; S.SyncName = name.Text.Trim(); app.SaveSettings(); };
         refreshers.Add(() => { if (!name.Focused) name.Text = S.SyncName.Length > 0 ? S.SyncName : app.SyncName; });
-        Flow(p, Lbl("Seu nome", 120), name);
+        Flow(p, Lbl(L.T("Seu nome"), 120), name);
 
         var room = Input(250);
         room.Font = new Font("Consolas", 11f);
         refreshers.Add(() => { if (!room.Focused) room.Text = S.SyncRoom; });
-        Flow(p, Lbl("Código da sala", 120), room);
+        Flow(p, Lbl(L.T("Código da sala"), 120), room);
 
         Action join = () =>
         {
             string code = GroupSync.Normalize(room.Text);
-            if (!GroupSync.ValidRoom(code)) { MessageBox.Show(this, "Cole o código da sala (o que o amigo te mandou) ou crie uma sala nova.", "Grupo"); return; }
+            if (!GroupSync.ValidRoom(code)) { MessageBox.Show(this, L.T("Cole o código da sala (o que o amigo te mandou) ou crie uma sala nova."), L.T("Grupo")); return; }
             S.SyncRoom = code; S.SyncEnabled = true;
             if (name.Text.Trim().Length > 0) S.SyncName = name.Text.Trim();
             app.SaveSettings(); app.RestartSync(); RefreshControls();
         };
         Flow(p,
-            Btn("Entrar na sala", 120, (s, e) => join()),
-            Btn("Criar sala nova", 130, (s, e) =>
+            Btn(L.T("Entrar na sala"), 120, (s, e) => join()),
+            Btn(L.T("Criar sala nova"), 130, (s, e) =>
             {
-                if (S.SyncRoom.Length > 0 && MessageBox.Show(this, "Criar uma sala nova? Você sai da sala atual (os amigos precisam do código novo).",
-                        "Grupo", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                if (S.SyncRoom.Length > 0 && MessageBox.Show(this, L.T("Criar uma sala nova? Você sai da sala atual (os amigos precisam do código novo)."),
+                        L.T("Grupo"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 room.Text = GroupSync.NewRoomCode(); join();
             }),
-            Btn("Copiar código", 120, (s, e) => { try { if (S.SyncRoom.Length > 0) Clipboard.SetText(S.SyncRoom); } catch { } }));
+            Btn(L.T("Copiar código"), 120, (s, e) => { try { if (S.SyncRoom.Length > 0) Clipboard.SetText(S.SyncRoom); } catch { } }));
 
         var status = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), Margin = new Padding(0, 4, 0, 4), Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
         refreshers.Add(() =>
         {
             if (app.Sync == null)
             {
-                status.Text = S.SyncEnabled ? "● Sem sala — crie uma ou cole o código do amigo" : "● Desligado";
+                status.Text = S.SyncEnabled ? L.T("● Sem sala — crie uma ou cole o código do amigo") : L.T("● Desligado");
                 status.ForeColor = DIM;
             }
             else
             {
-                status.Text = "● " + (app.Sync.Connected ? "Conectado" : app.Sync.Status) + "   •   " + app.Sync.Notes.Count + " senha(s) do grupo";
+                status.Text = "● " + (app.Sync.Connected ? L.T("Conectado") : app.Sync.Status) + "   •   " + app.Sync.Notes.Count + L.T(" senha(s) do grupo");
                 status.ForeColor = app.Sync.Connected ? Color.FromArgb(0, 220, 130) : Color.FromArgb(255, 170, 60);
             }
         });
         p.Controls.Add(status);
 
-        Flow(p, Lbl("Tirar print e enviar", 170), HotkeyBox(() => S.ShotKey, v => S.ShotKey = v));
-        Flow(p, Lbl("Ver prints recebidos", 170), HotkeyBox(() => S.ShotViewKey, v => S.ShotViewKey = v));
+        Flow(p, Lbl(L.T("Tirar print e enviar"), 170), HotkeyBox(() => S.ShotKey, v => S.ShotKey = v));
+        Flow(p, Lbl(L.T("Ver prints recebidos"), 170), HotkeyBox(() => S.ShotViewKey, v => S.ShotViewKey = v));
         Flow(p,
-            Btn("Ver prints", 100, (s, e) => app.ViewShots()),
-            Btn("Abrir pasta de prints", 160, (s, e) =>
+            Btn(L.T("Ver prints"), 100, (s, e) => app.ViewShots()),
+            Btn(L.T("Abrir pasta de prints"), 160, (s, e) =>
             {
                 try { System.IO.Directory.CreateDirectory(Shots.Dir); System.Diagnostics.Process.Start("explorer.exe", "\"" + Shots.Dir + "\""); } catch { }
             }));
-        Note(p, "O print é da tela onde está a mira. Use o jogo em modo janela sem borda (borderless): em tela cheia exclusiva o print pode sair preto. " +
-                "Os amigos veem um aviso com a miniatura e abrem com o atalho de \"Ver prints\" (← → passa, Esc fecha).");
-        Flow(p, Chk("Anotações novas vão para o grupo (na caixinha, Tab troca)", () => S.NotesDefaultGroup,
+        Note(p, L.T("O print é da tela onde está a mira. Use o jogo em modo janela sem borda (borderless): em tela cheia exclusiva o print pode sair preto. ") +
+                L.T("Os amigos veem um aviso com a miniatura e abrem com o atalho de \"Ver prints\" (← → passa, Esc fecha)."));
+        Flow(p, Chk(L.T("Anotações novas vão para o grupo (na caixinha, Tab troca)"), () => S.NotesDefaultGroup,
             v => { S.NotesDefaultGroup = v; app.SaveSettings(); }));
-        Flow(p, Btn("Apagar todas do grupo", 170, (s, e) =>
+        Flow(p, Btn(L.T("Apagar todas do grupo"), 170, (s, e) =>
         {
             if (app.Sync == null || app.Sync.Notes.Count == 0) return;
-            if (MessageBox.Show(this, "Apagar todas as senhas do grupo? Elas somem para todos da sala.", "Grupo",
+            if (MessageBox.Show(this, L.T("Apagar todas as senhas do grupo? Elas somem para todos da sala."), L.T("Grupo"),
                     MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) app.Sync.DeleteAll();
         }));
-        Note(p, "Como usar: um de vocês clica em \"Criar sala nova\" e manda o código para os outros (Discord, WhatsApp). " +
-                "Cada um cola o código e clica em \"Entrar na sala\". Pronto: o que alguém anotar no grupo aparece para todos em 1-2 segundos, " +
-                "e o que for apagado some para todos.\n\n" +
-                "Usa o serviço gratuito ntfy.sh. As senhas vão criptografadas com o código da sala — sem o código ninguém consegue ler. " +
-                "Não compartilhe o código fora do grupo.");
+        Note(p, L.T("Como usar: um de vocês clica em \"Criar sala nova\" e manda o código para os outros (Discord, WhatsApp). ") +
+                L.T("Cada um cola o código e clica em \"Entrar na sala\". Pronto: o que alguém anotar no grupo aparece para todos em 1-2 segundos, ") +
+                L.T("e o que for apagado some para todos.\n\n") +
+                L.T("Usa o serviço gratuito ntfy.sh. As senhas vão criptografadas com o código da sala — sem o código ninguém consegue ler. ") +
+                L.T("Não compartilhe o código fora do grupo."));
     }
 
     void NotesCorner(int c)
@@ -1387,9 +1407,9 @@ class SettingsForm : Form
     void BuildNotesPage(FlowLayoutPanel p)
     {
         var S = app.Settings;
-        Header(p, "Suas senhas (só neste PC)");
-        Flow(p, Chk("Mostrar as senhas na tela", () => S.NotesShow, v => { S.NotesShow = v; app.SaveSettings(); app.UpdateNotes(); }));
-        Note(p, "Uma anotação por linha. Tudo é salvo automaticamente. As senhas do grupo ficam na seção abaixo.");
+        Header(p, L.T("Suas senhas (só neste PC)"));
+        Flow(p, Chk(L.T("Mostrar as senhas na tela"), () => S.NotesShow, v => { S.NotesShow = v; app.SaveSettings(); app.UpdateNotes(); }));
+        Note(p, L.T("Uma anotação por linha. Tudo é salvo automaticamente. As senhas do grupo ficam na seção abaixo."));
         var box = new TextBox
         {
             Multiline = true, ScrollBars = ScrollBars.Vertical, AcceptsReturn = true, Width = RowW, Height = 230,
@@ -1406,41 +1426,41 @@ class SettingsForm : Form
         refreshers.Add(() => { if (!box.Focused) box.Text = string.Join("\r\n", app.NoteLines); });
         p.Controls.Add(box);
         Flow(p,
-            Btn("Apagar senha…", 120, (s, e) => app.OpenDeleteNotes()),
-            Btn("Apagar a última", 130, (s, e) =>
+            Btn(L.T("Apagar senha…"), 120, (s, e) => app.OpenDeleteNotes()),
+            Btn(L.T("Apagar a última"), 130, (s, e) =>
             {
                 if (app.NoteLines.Count == 0) return;
                 var l = new List<string>(app.NoteLines); l.RemoveAt(l.Count - 1); app.SetNotes(l); RefreshControls();
             }),
-            Btn("Apagar todas", 120, (s, e) =>
+            Btn(L.T("Apagar todas"), 120, (s, e) =>
             {
                 if (app.NoteLines.Count == 0) return;
-                if (MessageBox.Show(this, "Apagar todas as anotações?", "Senhas", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                if (MessageBox.Show(this, L.T("Apagar todas as anotações?"), L.T("Senhas"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 { app.SetNotes(new List<string>()); RefreshControls(); }
             }),
-            Btn("Copiar tudo", 110, (s, e) => { try { if (app.NoteLines.Count > 0) Clipboard.SetText(string.Join("\r\n", app.NoteLines)); } catch { } }));
-        Slider(p, "Tamanho do texto", 10, 36, () => S.NotesFontSize, v => { S.NotesFontSize = v; app.SaveSettings(); app.UpdateNotes(); });
+            Btn(L.T("Copiar tudo"), 110, (s, e) => { try { if (app.NoteLines.Count > 0) Clipboard.SetText(string.Join("\r\n", app.NoteLines)); } catch { } }));
+        Slider(p, L.T("Tamanho do texto"), 10, 36, () => S.NotesFontSize, v => { S.NotesFontSize = v; app.SaveSettings(); app.UpdateNotes(); });
 
         BuildGroupSection(p);
 
-        Header(p, "Posição do bloco");
+        Header(p, L.T("Posição do bloco"));
         Flow(p,
-            Btn("Posicionar clicando na tela", 200, (s, e) => PickNotesPosition()),
+            Btn(L.T("Posicionar clicando na tela"), 200, (s, e) => PickNotesPosition()),
             Btn("↖", 36, (s, e) => NotesCorner(0)), Btn("↗", 36, (s, e) => NotesCorner(1)),
             Btn("↙", 36, (s, e) => NotesCorner(2)), Btn("↘", 36, (s, e) => NotesCorner(3)));
-        Slider(p, "Horizontal (X)", 0, 7680, () => S.NotesX, v => { S.NotesX = v; app.SaveSettings(); app.UpdateNotes(); });
-        Slider(p, "Vertical (Y)", 0, 4320, () => S.NotesY, v => { S.NotesY = v; app.SaveSettings(); app.UpdateNotes(); });
-        Note(p, "\"Posicionar clicando\": clique onde deve ficar o canto superior esquerdo do bloco. As setas levam o bloco para um dos cantos.");
+        Slider(p, L.T("Horizontal (X)"), 0, 7680, () => S.NotesX, v => { S.NotesX = v; app.SaveSettings(); app.UpdateNotes(); });
+        Slider(p, L.T("Vertical (Y)"), 0, 4320, () => S.NotesY, v => { S.NotesY = v; app.SaveSettings(); app.UpdateNotes(); });
+        Note(p, L.T("\"Posicionar clicando\": clique onde deve ficar o canto superior esquerdo do bloco. As setas levam o bloco para um dos cantos."));
 
-        Header(p, "Atalhos (funcionam dentro do jogo)");
-        Flow(p, Lbl("Anotar rápido", 170), HotkeyBox(() => S.NotesAddKey, v => { S.NotesAddKey = v; app.UpdateNotes(); }));
-        Flow(p, Lbl("Mostrar/ocultar senhas", 170), HotkeyBox(() => S.NotesToggleKey, v => S.NotesToggleKey = v));
-        Flow(p, Lbl("Apagar senha usada", 170), HotkeyBox(() => S.NotesDelKey, v => S.NotesDelKey = v));
-        Note(p, "No jogo, aperte o atalho de \"Anotar rápido\", digite (ex.: Porta do laboratório 4521) e aperte Enter. " +
-                "A caixinha some e você volta direto para o jogo. Esc cancela.\n\n" +
-                "Para apagar uma senha já usada: aperte o atalho de \"Apagar senha usada\" e depois o número dela (1-9). " +
-                "Z desfaz se apagar a errada. Também funciona digitar -3 na caixinha de anotar para apagar a senha 3.\n\n" +
-                "Numa sala de grupo, a caixinha mostra para onde vai a anotação (GRUPO ou SÓ MINHA). Aperte Tab para trocar.\n\n" +
+        Header(p, L.T("Atalhos (funcionam dentro do jogo)"));
+        Flow(p, Lbl(L.T("Anotar rápido"), 170), HotkeyBox(() => S.NotesAddKey, v => { S.NotesAddKey = v; app.UpdateNotes(); }));
+        Flow(p, Lbl(L.T("Mostrar/ocultar senhas"), 170), HotkeyBox(() => S.NotesToggleKey, v => S.NotesToggleKey = v));
+        Flow(p, Lbl(L.T("Apagar senha usada"), 170), HotkeyBox(() => S.NotesDelKey, v => S.NotesDelKey = v));
+        Note(p, L.T("No jogo, aperte o atalho de \"Anotar rápido\", digite (ex.: Porta do laboratório 4521) e aperte Enter. ") +
+                L.T("A caixinha some e você volta direto para o jogo. Esc cancela.\n\n") +
+                L.T("Para apagar uma senha já usada: aperte o atalho de \"Apagar senha usada\" e depois o número dela (1-9). ") +
+                L.T("Z desfaz se apagar a errada. Também funciona digitar -3 na caixinha de anotar para apagar a senha 3.\n\n") +
+                L.T("Numa sala de grupo, a caixinha mostra para onde vai a anotação (GRUPO ou SÓ MINHA). Aperte Tab para trocar.\n\n") +
                 "As anotações ficam no arquivo senhas.txt, na pasta de perfis.");
     }
 }

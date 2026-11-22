@@ -46,7 +46,7 @@ class GroupSync : IDisposable
     public event Action<FileOffer> FileOffered;  // thread da interface
     public event Action<long, DateTime> PeerVersion;
     readonly long myBuild;
-    public volatile string Status = "conectando…";
+    public volatile string Status = L.T("conectando…");
     public volatile bool Connected;
 
     volatile bool stop;
@@ -285,7 +285,7 @@ class GroupSync : IDisposable
                     }
                     catch (Exception ex)
                     {
-                        SetStatus("erro ao enviar: " + ex.Message, Connected);
+                        SetStatus(L.T("erro ao enviar: ") + ex.Message, Connected);
                         if (stopEv.WaitOne(1500 * (tries + 1))) return;
                     }
                 }
@@ -359,7 +359,7 @@ class GroupSync : IDisposable
                 using (var resp = r.GetResponse())
                 using (var rd = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
                 {
-                    SetStatus("conectado", true);
+                    SetStatus(L.T("conectado"), true);
                     if (!asked) { asked = true; Post("req\n" + me); Post("ver\n" + me + "\n" + myBuild); }
                     string line;
                     while (!stop && (line = rd.ReadLine()) != null)
@@ -383,10 +383,10 @@ class GroupSync : IDisposable
             catch (Exception ex)
             {
                 if (stop) break;
-                SetStatus("sem conexão — tentando de novo (" + ex.Message + ")", false);
+                SetStatus(L.T("sem conexão — tentando de novo (") + ex.Message + ")", false);
             }
             if (stop) break;
-            if (Connected) SetStatus("reconectando…", false);
+            if (Connected) SetStatus(L.T("reconectando…"), false);
             if (stopEv.WaitOne(3000)) break;
         }
     }

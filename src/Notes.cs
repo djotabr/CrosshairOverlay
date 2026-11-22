@@ -45,19 +45,19 @@ static class Notes
         // kind: 0 título seu, 1 linha sua, 2 dica, 3 título grupo, 4 linha do grupo
         var rows = new List<KeyValuePair<string, int>>();
         bool hasGroup = groupTitle != null;
-        int L = lines.Count;
-        if (L > 0 || !hasGroup)
+        int nl = lines.Count;
+        if (nl > 0 || !hasGroup)
         {
-            rows.Add(new KeyValuePair<string, int>((hasGroup ? "SUAS SENHAS" : "SENHAS") + (L > MaxShown ? "  (últimas " + MaxShown + " de " + L + ")" : ""), 0));
-            if (L == 0) rows.Add(new KeyValuePair<string, int>("Nenhuma anotação — " + addKeyText + " para anotar", 2));
-            for (int i = Math.Max(0, L - MaxShown); i < L; i++) rows.Add(new KeyValuePair<string, int>((i + 1) + ".  " + lines[i], 1));
+            rows.Add(new KeyValuePair<string, int>((hasGroup ? L.T("SUAS SENHAS") : L.T("SENHAS")) + (nl > MaxShown ? L.T("  (últimas ") + MaxShown + L.T(" de ") + nl + ")" : ""), 0));
+            if (nl == 0) rows.Add(new KeyValuePair<string, int>(L.T("Nenhuma anotação — ") + addKeyText + L.T(" para anotar"), 2));
+            for (int i = Math.Max(0, nl - MaxShown); i < nl; i++) rows.Add(new KeyValuePair<string, int>((i + 1) + ".  " + lines[i], 1));
         }
         if (hasGroup)
         {
             int G = group.Count;
-            rows.Add(new KeyValuePair<string, int>(groupTitle + (G > MaxShown ? "  (últimas " + MaxShown + " de " + G + ")" : ""), 3));
-            if (G == 0) rows.Add(new KeyValuePair<string, int>("Nenhuma senha do grupo ainda", 2));
-            for (int j = Math.Max(0, G - MaxShown); j < G; j++) rows.Add(new KeyValuePair<string, int>((L + j + 1) + ".  " + group[j], 4));
+            rows.Add(new KeyValuePair<string, int>(groupTitle + (G > MaxShown ? L.T("  (últimas ") + MaxShown + L.T(" de ") + G + ")" : ""), 3));
+            if (G == 0) rows.Add(new KeyValuePair<string, int>(L.T("Nenhuma senha do grupo ainda"), 2));
+            for (int j = Math.Max(0, G - MaxShown); j < G; j++) rows.Add(new KeyValuePair<string, int>((nl + j + 1) + ".  " + group[j], 4));
         }
 
         using (var fTitle = new Font("Segoe UI", fontPx * 0.85f, FontStyle.Bold, GraphicsUnit.Pixel))
@@ -137,7 +137,7 @@ class QuickNoteForm : Form
 
         var l = head = new Label
         {
-            Text = "Nova anotação   (Enter salva  •  Esc cancela)", ForeColor = Color.FromArgb(0, 220, 130),
+            Text = L.T("Nova anotação   (Enter salva  •  Esc cancela)"), ForeColor = Color.FromArgb(0, 220, 130),
             Font = new Font("Segoe UI", 9f, FontStyle.Bold), Location = new Point(12, 9), AutoSize = true
         };
         tb = new TextBox
@@ -158,17 +158,17 @@ class QuickNoteForm : Form
     {
         if (!groupAvailable)
         {
-            head.Text = "Nova anotação   (Enter salva  •  Esc cancela)";
+            head.Text = L.T("Nova anotação   (Enter salva  •  Esc cancela)");
             head.ForeColor = Color.FromArgb(0, 220, 130);
         }
         else if (toGroup)
         {
-            head.Text = "Nova anotação  →  GRUPO   (Tab: só minha  •  Enter salva  •  Esc)";
+            head.Text = L.T("Nova anotação  →  GRUPO   (Tab: só minha  •  Enter salva  •  Esc)");
             head.ForeColor = Color.FromArgb(90, 175, 255);
         }
         else
         {
-            head.Text = "Nova anotação  →  SÓ MINHA   (Tab: grupo  •  Enter salva  •  Esc)";
+            head.Text = L.T("Nova anotação  →  SÓ MINHA   (Tab: grupo  •  Enter salva  •  Esc)");
             head.ForeColor = Color.FromArgb(0, 220, 130);
         }
         Invalidate();
@@ -241,12 +241,12 @@ class DeleteNotesForm : Form
 
         var title = new Label
         {
-            Text = "APAGAR SENHA", ForeColor = Color.FromArgb(255, 110, 110),
+            Text = L.T("APAGAR SENHA"), ForeColor = Color.FromArgb(255, 110, 110),
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Location = new Point(12, 8), AutoSize = true
         };
         hint = new Label
         {
-            Text = "1-9 apaga na hora  •  ↑↓ + Delete  •  Z desfaz  •  Esc fecha",
+            Text = L.T("1-9 apaga na hora  •  ↑↓ + Delete  •  Z desfaz  •  Esc fecha"),
             ForeColor = Color.FromArgb(150, 155, 170), Font = new Font("Segoe UI", 8.5f), Location = new Point(12, 28), AutoSize = true
         };
         list = new ListBox
@@ -267,7 +267,7 @@ class DeleteNotesForm : Form
         var notes = getNotes();
         list.Items.Clear();
         for (int i = 0; i < notes.Count; i++) list.Items.Add((i + 1) + ".  " + notes[i]);
-        if (notes.Count == 0) list.Items.Add("(nenhuma senha anotada)");
+        if (notes.Count == 0) list.Items.Add(L.T("(nenhuma senha anotada)"));
         list.Height = Math.Min(12, Math.Max(1, list.Items.Count)) * list.ItemHeight + 6;
         ClientSize = new Size(480, list.Bottom + 12);
         if (notes.Count > 0) list.SelectedIndex = Util.Clamp(select, 0, notes.Count - 1);

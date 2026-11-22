@@ -21,6 +21,7 @@ static class Program
         if (ai >= 0 && ai + 1 < args.Length && int.TryParse(args[ai + 1], out oldPid))
             try { using (var old = Process.GetProcessById(oldPid)) old.WaitForExit(15000); } catch { }
         try { System.Net.ServicePointManager.SecurityProtocol |= (System.Net.SecurityProtocolType)3072; } catch { }   // TLS 1.2
+        try { L.Set(Storage.LoadSettings().Language); } catch { }
         Updater.CleanupOld();
         // versão nova baixada e ainda não instalada (ex.: o app foi fechado à força): instala agora
         if (Updater.StagedBuild > BuildInfo.Build && Updater.Apply(true)) return;
@@ -32,7 +33,7 @@ static class Program
         {
             if (!created)
             {
-                MessageBox.Show("O Crosshair Overlay já está em execução.\nProcure o ícone na bandeja do sistema (perto do relógio).",
+                MessageBox.Show(L.T("O Crosshair Overlay já está em execução.\nProcure o ícone na bandeja do sistema (perto do relógio)."),
                     "Crosshair Overlay", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
@@ -56,7 +57,7 @@ static class Hotkeys
 
     public static string ToText(int v)
     {
-        if (v == 0) return "Nenhum";
+        if (v == 0) return L.T("Nenhum");
         Keys k = (Keys)v;
         Keys code = k & Keys.KeyCode;
         string name;
@@ -169,7 +170,7 @@ class PlacePicker : Form
 
         var l = new Label
         {
-            Text = "Clique onde você quer a mira   •   Esc para cancelar",
+            Text = L.T("Clique onde você quer a mira   •   Esc para cancelar"),
             ForeColor = Color.White,
             Font = new Font("Segoe UI", 16f, FontStyle.Bold),
             AutoSize = true,
@@ -221,7 +222,7 @@ static class Prompt
             var l = new Label { Text = text, Location = new Point(12, 12), AutoSize = true };
             var tb = new TextBox { Text = def, Location = new Point(12, 38), Width = 416 };
             var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(272, 80), Width = 75 };
-            var cancel = new Button { Text = "Cancelar", DialogResult = DialogResult.Cancel, Location = new Point(353, 80), Width = 75 };
+            var cancel = new Button { Text = L.T("Cancelar"), DialogResult = DialogResult.Cancel, Location = new Point(353, 80), Width = 75 };
             f.AcceptButton = ok; f.CancelButton = cancel;
             f.Controls.AddRange(new Control[] { l, tb, ok, cancel });
             return f.ShowDialog(owner) == DialogResult.OK ? tb.Text.Trim() : null;
@@ -279,15 +280,15 @@ class CrosshairApp : ApplicationContext
     {
         byte[] jpg;
         try { jpg = Shots.Capture(CrossScreen()); }
-        catch (Exception ex) { ShowToast(null, "Não consegui tirar o print", ex.Message, 3000); return; }
+        catch (Exception ex) { ShowToast(null, L.T("Não consegui tirar o print"), ex.Message, 3000); return; }
         var now = DateTime.Now;
         Shots.SaveFile(jpg, "eu", now);
         var bmp = Shots.Decode(jpg);
-        if (bmp != null) AddShot(new Shot { Author = "você", Time = now, Image = bmp });
-        if (Sync == null) { ShowToast(ThumbOf(bmp), "Print salvo", "Entre numa sala de grupo (aba Senhas) para enviar aos amigos", 3000); return; }
-        ShowToast(ThumbOf(bmp), "Enviando print ao grupo…", (jpg.Length / 1024) + " KB", 8000);
+        if (bmp != null) AddShot(new Shot { Author = L.T("você"), Time = now, Image = bmp });
+        if (Sync == null) { ShowToast(ThumbOf(bmp), L.T("Print salvo"), L.T("Entre numa sala de grupo (aba Senhas) para enviar aos amigos"), 3000); return; }
+        ShowToast(ThumbOf(bmp), L.T("Enviando print ao grupo…"), (jpg.Length / 1024) + " KB", 8000);
         Sync.Upload("shot", SyncName, jpg, (ok, err) =>
-            ShowToast(ThumbOf(bmp), ok ? "Print enviado ao grupo" : "Falha ao enviar o print", ok ? "" : err, 3000));
+            ShowToast(ThumbOf(bmp), ok ? L.T("Print enviado ao grupo") : L.T("Falha ao enviar o print"), ok ? "" : err, 3000));
     }
 
     void AddShot(Shot s)
@@ -318,7 +319,7 @@ class CrosshairApp : ApplicationContext
                 if (bmp == null) return;
                 Shots.SaveFile(data, author, DateTime.Now);
                 AddShot(new Shot { Author = author, Time = DateTime.Now, Image = bmp });
-                ShowToast(ThumbOf(bmp), "Print de " + author, Hotkeys.ToText(Settings.ShotViewKey) + " para ver", 5000);
+                ShowToast(ThumbOf(bmp), L.T("Print de ") + author, Hotkeys.ToText(Settings.ShotViewKey) + L.T(" para ver"), 5000);
                 if (Settings.AutoSound) Beeper.Play(1, Settings.AutoVolume);
             });
         }
@@ -356,18 +357,18 @@ class CrosshairApp : ApplicationContext
 
     public void ShareUpdate(bool manual)
     {
-        if (Sync == null) { if (manual) MessageBox.Show("Entre numa sala de grupo primeiro (aba Senhas).", "Atualização"); return; }
+        if (Sync == null) { if (manual) MessageBox.Show(L.T("Entre numa sala de grupo primeiro (aba Senhas)."), L.T("Atualização")); return; }
         byte[] exe; string sha, sig;
         if (!Updater.GetPackage(out exe, out sha, out sig))
         {
-            if (manual) MessageBox.Show("Esta cópia do app não tem assinatura válida para repassar.", "Atualização");
+            if (manual) MessageBox.Show(L.T("Esta cópia do app não tem assinatura válida para repassar."), L.T("Atualização"));
             return;
         }
         updSeen[BuildInfo.Build] = DateTime.UtcNow;
-        UpdateStatus = "Enviando esta versão ao grupo…"; RefreshSettings();
+        UpdateStatus = L.T("Enviando esta versão ao grupo…"); RefreshSettings();
         Sync.Upload("upd", BuildInfo.Build + "\n" + sha + "\n" + sig + "\n" + AppInfo.Version, exe, (ok, err) =>
         {
-            UpdateStatus = ok ? "Versão " + Updater.VersionText + " enviada ao grupo" : "Falha ao enviar a versão: " + err;
+            UpdateStatus = ok ? L.T("Versão ") + Updater.VersionText + L.T(" enviada ao grupo") : L.T("Falha ao enviar a versão: ") + err;
             if (!ok) updSeen.Remove(BuildInfo.Build);
             RefreshSettings();
         });
@@ -380,7 +381,7 @@ class CrosshairApp : ApplicationContext
     {
         if ((!Settings.AutoUpdate && !manual) || ghChecking) return;
         ghChecking = true;
-        if (manual) { UpdateStatus = "Procurando versão nova no GitHub…"; RefreshSettings(); }
+        if (manual) { UpdateStatus = L.T("Procurando versão nova no GitHub…"); RefreshSettings(); }
         ThreadPool.QueueUserWorkItem(_ =>
         {
             Updater.Release r = null; string err = null;
@@ -399,8 +400,8 @@ class CrosshairApp : ApplicationContext
                         }), manual);
                     else if (manual)
                     {
-                        UpdateStatus = err != null ? "Não consegui falar com o GitHub: " + err
-                            : Updater.StagedBuild > BuildInfo.Build ? "Atualização já baixada — reinicie o app para instalar" : "Você já está na versão mais nova";
+                        UpdateStatus = err != null ? L.T("Não consegui falar com o GitHub: ") + err
+                            : Updater.StagedBuild > BuildInfo.Build ? L.T("Atualização já baixada — reinicie o app para instalar") : L.T("Você já está na versão mais nova");
                         RefreshSettings();
                     }
                 }));
@@ -420,7 +421,7 @@ class CrosshairApp : ApplicationContext
 
     static string VersionLabel(Updater.Release r)
     {
-        return (r.Version.Length > 0 ? "versão " + r.Version : "versão nova") + " (" + Updater.BuildDate(r.Build) + ")";
+        return (r.Version.Length > 0 ? L.T("versão ") + r.Version : L.T("versão nova")) + " (" + Updater.BuildDate(r.Build) + ")";
     }
 
     void OfferUpdate(Updater.Release r, Action<Action<byte[]>> download, bool manual)
@@ -430,7 +431,7 @@ class CrosshairApp : ApplicationContext
         offer = r; offerDownload = download;
         if (manual) declinedBuild = 0;
         if (r.Build != declinedBuild) offerToastShown = false;
-        UpdateStatus = "Atualização disponível: " + VersionLabel(r);
+        UpdateStatus = L.T("Atualização disponível: ") + VersionLabel(r);
         RefreshSettings();
         TryAskUpdate(manual);
     }
@@ -450,18 +451,18 @@ class CrosshairApp : ApplicationContext
             if (!offerToastShown)
             {
                 offerToastShown = true;
-                ShowToast(AppIcon.ToBitmap(), "Atualização disponível", "Vou perguntar quando você sair do jogo", 4000);
+                ShowToast(AppIcon.ToBitmap(), L.T("Atualização disponível"), L.T("Vou perguntar quando você sair do jogo"), 4000);
             }
             return;
         }
         var r = offer;
         askingUpdate = true;
-        bool yes = Ask("Saiu a " + VersionLabel(r) + " do Crosshair Overlay.\n\nQuer baixar agora?", "Atualização disponível");
+        bool yes = Ask(L.T("Saiu a ") + VersionLabel(r) + L.T(" do Crosshair Overlay.\n\nQuer baixar agora?"), L.T("Atualização disponível"));
         askingUpdate = false;
         if (!yes)
         {
             declinedBuild = r.Build;
-            UpdateStatus = "Atualização disponível: " + VersionLabel(r) + " — use \"Baixar atualização\" quando quiser";
+            UpdateStatus = L.T("Atualização disponível: ") + VersionLabel(r) + L.T(" — use \"Baixar atualização\" quando quiser");
             RefreshSettings();
             return;
         }
@@ -473,23 +474,23 @@ class CrosshairApp : ApplicationContext
         if (offer == null || offerDownload == null) return;
         var r = offer;
         var download = offerDownload;
-        UpdateStatus = "Baixando a " + VersionLabel(r) + "…";
+        UpdateStatus = L.T("Baixando a ") + VersionLabel(r) + "…";
         RefreshSettings();
         download(exe =>
         {
-            if (exe == null) { UpdateStatus = "Falha ao baixar a atualização — tente de novo em \"Baixar atualização\""; RefreshSettings(); return; }
+            if (exe == null) { UpdateStatus = L.T("Falha ao baixar a atualização — tente de novo em \"Baixar atualização\""); RefreshSettings(); return; }
             if (!Updater.Stage(exe, r.Build, r.Sha, r.Sig))
             {
-                UpdateStatus = "A versão recebida não tem a assinatura do autor — ignorada";
+                UpdateStatus = L.T("A versão recebida não tem a assinatura do autor — ignorada");
                 if (offer == r) offer = null;
                 RefreshSettings();
                 return;
             }
             if (offer == r) offer = null;
-            UpdateStatus = "Atualização baixada — reinicie o app para instalar";
+            UpdateStatus = L.T("Atualização baixada — reinicie o app para instalar");
             RefreshSettings();
             restartAskPending = true;
-            if (gameFocused) ShowToast(AppIcon.ToBitmap(), "Atualização baixada", "Vou perguntar sobre reiniciar quando você sair do jogo", 4000);
+            if (gameFocused) ShowToast(AppIcon.ToBitmap(), L.T("Atualização baixada"), L.T("Vou perguntar sobre reiniciar quando você sair do jogo"), 4000);
             TryAskUpdate();
         });
     }
@@ -499,7 +500,7 @@ class CrosshairApp : ApplicationContext
         restartAskPending = false;
         if (Updater.StagedBuild <= BuildInfo.Build) return;
         askingUpdate = true;
-        bool yes = Ask("A atualização foi baixada.\n\nReiniciar o Crosshair Overlay agora para atualizar?\n\n(Se escolher Não, ela é instalada quando você fechar o app.)", "Atualização pronta");
+        bool yes = Ask(L.T("A atualização foi baixada.\n\nReiniciar o Crosshair Overlay agora para atualizar?\n\n(Se escolher Não, ela é instalada quando você fechar o app.)"), L.T("Atualização pronta"));
         askingUpdate = false;
         if (yes) UpdateNow();
     }
@@ -534,7 +535,7 @@ class CrosshairApp : ApplicationContext
     public List<string> AllNotesForList()
     {
         var l = new List<string>(NoteLines);
-        foreach (var g in GroupNotes) l.Add(g.Text + "   · " + g.Author + "  [grupo]");
+        foreach (var g in GroupNotes) l.Add(g.Text + "   · " + g.Author + L.T("  [grupo]"));
         return l;
     }
     bool notesShown;
@@ -564,6 +565,7 @@ class CrosshairApp : ApplicationContext
     {
         AppIcon = LoadIcon();
         Settings = Storage.LoadSettings();
+        L.Set(Settings.Language);
         // versões antigas usavam Ctrl+Alt+P para o print, que é o mesmo atalho de "próximo perfil"
         if (Settings.ShotKey == Settings.NextProfileKey) Settings.ShotKey = (int)(Keys.Control | Keys.Alt | Keys.S);
         Profiles = Storage.ListProfiles();
@@ -627,6 +629,7 @@ class CrosshairApp : ApplicationContext
         miUpdate.Font = new Font(miUpdate.Font, FontStyle.Bold);
         menu.Opening += (s, e) =>
         {
+            foreach (ToolStripItem it in menu.Items) { var key = it.Tag as string; if (key != null) it.Text = L.T(key); }
             miProfiles.DropDownItems.Clear();
             foreach (var p in Profiles)
             {
@@ -644,7 +647,8 @@ class CrosshairApp : ApplicationContext
         menu.Items.AddRange(new ToolStripItem[] {
             miSettings, miUpdate, miDownload, miToggle, miOnly, miProfiles, miAuto, miShots, new ToolStripSeparator(),
             new ToolStripMenuItem("Sair", null, (s, e) => Exit()) });
-        tray = new NotifyIcon { Icon = AppIcon, Text = "Crosshair Overlay — by " + AppInfo.Author, Visible = true, ContextMenuStrip = menu };
+        foreach (ToolStripItem it in menu.Items) if (it is ToolStripMenuItem) it.Tag = it.Text;   // texto em português = chave
+        tray = new NotifyIcon { Icon = AppIcon, Text = L.T("Crosshair Overlay — by ") + AppInfo.Author, Visible = true, ContextMenuStrip = menu };
         tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) ToggleSettings(true); };
 
         poll = new System.Windows.Forms.Timer { Interval = 15 };
@@ -664,8 +668,8 @@ class CrosshairApp : ApplicationContext
         }
         else
         {
-            tray.ShowBalloonTip(2500, "Crosshair Overlay ativo — by " + AppInfo.Author,
-                "Menu: " + Hotkeys.ToText(Settings.MenuKey) + "   •   Mostrar/ocultar: " + Hotkeys.ToText(Settings.ToggleKey),
+            tray.ShowBalloonTip(2500, L.T("Crosshair Overlay ativo — by ") + AppInfo.Author,
+                L.T("Menu: ") + Hotkeys.ToText(Settings.MenuKey) + L.T("   •   Mostrar/ocultar: ") + Hotkeys.ToText(Settings.ToggleKey),
                 ToolTipIcon.None);
         }
     }
@@ -764,7 +768,7 @@ class CrosshairApp : ApplicationContext
             return;
         }
         var sc = CrossScreen();
-        string gTitle = Sync == null ? null : "GRUPO" + (Sync.Connected ? "" : "  (sem conexão)");
+        string gTitle = Sync == null ? null : L.T("GRUPO") + (Sync.Connected ? "" : L.T("  (sem conexão)"));
         var gLines = GroupNotes.Select(n => n.Text + "   · " + n.Author).ToList();
         using (var bmp = Notes.Render(NoteLines, gLines, gTitle, Settings.NotesFontSize, Hotkeys.ToText(Settings.NotesAddKey)))
         {
@@ -1013,7 +1017,7 @@ class CrosshairApp : ApplicationContext
         if (Settings.AutoSwitchProfiles && prof != null && Profiles.Contains(prof) && prof != Settings.ActiveProfile)
         {
             SwitchProfile(prof);
-            tray.ShowBalloonTip(1200, "Crosshair Overlay", "Jogo: " + exe + "  →  perfil " + prof, ToolTipIcon.None);
+            tray.ShowBalloonTip(1200, "Crosshair Overlay", L.T("Jogo: ") + exe + L.T("  →  perfil ") + prof, ToolTipIcon.None);
         }
         if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.RefreshControls();
         if (oldIcon != null) oldIcon.Dispose();
@@ -1051,10 +1055,10 @@ class CrosshairApp : ApplicationContext
     void ShowGameToast()
     {
         string linked = LinkedProfile(CurrentGame);
-        string line2 = "Perfil: " + Settings.ActiveProfile + (linked != null ? "  (vinculado)" : "");
+        string line2 = L.T("Perfil: ") + Settings.ActiveProfile + (linked != null ? L.T("  (vinculado)") : "");
         var screens = Screen.AllScreens;
         var sc = screens[Util.Clamp(Cfg.Monitor, 0, screens.Length - 1)].Bounds;
-        using (var bmp = GameToast.Render(CurrentGameIcon, "Jogo detectado: " + CurrentGame, line2))
+        using (var bmp = GameToast.Render(CurrentGameIcon, L.T("Jogo detectado: ") + CurrentGame, line2))
             toast.SetBitmap(bmp, sc.X + (sc.Width - bmp.Width) / 2, sc.Y + 40);
         Native.ShowWindow(toast.Handle, Native.SW_SHOWNA);
         toast.EnsureTopMost();
@@ -1124,8 +1128,8 @@ class CrosshairApp : ApplicationContext
             hk.Register(HK_CENTER, (int)(m | Keys.Home), false);
         }
         HotkeyStatus = fails.Count == 0
-            ? "✔ Atalhos ativos."
-            : "⚠ Não foi possível registrar: " + string.Join(", ", fails) + " (já usado por outro programa).";
+            ? L.T("✔ Atalhos ativos.")
+            : L.T("⚠ Não foi possível registrar: ") + string.Join(", ", fails) + L.T(" (já usado por outro programa).");
     }
 
     void OnHotkey(int id)
@@ -1168,6 +1172,21 @@ class CrosshairApp : ApplicationContext
     }
 
     // Recria o menu (tema ou posição mudou), mantendo a aba e deixando aberto se estava.
+    // Troca o idioma ("" = automático) e redesenha tudo que tem texto.
+    public void SetLanguage(string code)
+    {
+        Settings.Language = code;
+        SaveSettings();
+        L.Set(code);
+        if (quickNote != null) { quickNote.Close(); quickNote = null; }
+        if (deleteNotes != null) { deleteNotes.Close(); deleteNotes = null; }
+        if (shotViewer != null) { shotViewer.Close(); shotViewer = null; }
+        tray.Text = L.T("Crosshair Overlay — by ") + AppInfo.Author;
+        RegisterHotkeys();
+        UpdateNotes();
+        RebuildSettings();
+    }
+
     public void RebuildSettings()
     {
         if (settingsForm == null || settingsForm.IsDisposed) return;
@@ -1258,7 +1277,7 @@ class CrosshairApp : ApplicationContext
         if (Profiles.Count < 2) return;
         int i = Profiles.IndexOf(Settings.ActiveProfile);
         SwitchProfile(Profiles[(i + 1) % Profiles.Count]);
-        tray.ShowBalloonTip(1200, "Crosshair Overlay", "Perfil: " + Settings.ActiveProfile, ToolTipIcon.None);
+        tray.ShowBalloonTip(1200, "Crosshair Overlay", L.T("Perfil: ") + Settings.ActiveProfile, ToolTipIcon.None);
     }
 
     public void ToggleAuto()
@@ -1266,11 +1285,11 @@ class CrosshairApp : ApplicationContext
         if (Auto.Running) Auto.Stop();
         else if (Auto.ActiveKeys().Count == 0)
         {
-            tray.ShowBalloonTip(1500, "Auto-tecla", "Nenhuma tecla configurada (aba Auto-tecla).", ToolTipIcon.Warning);
+            tray.ShowBalloonTip(1500, L.T("Auto-tecla"), L.T("Nenhuma tecla configurada (aba Auto-tecla)."), ToolTipIcon.Warning);
             return;
         }
         else Auto.Start();
-        tray.ShowBalloonTip(1000, "Auto-tecla", Auto.Running ? "LIGADO" : "DESLIGADO", ToolTipIcon.None);
+        tray.ShowBalloonTip(1000, L.T("Auto-tecla"), Auto.Running ? L.T("LIGADO") : L.T("DESLIGADO"), ToolTipIcon.None);
         if (settingsForm != null && !settingsForm.IsDisposed && settingsForm.Visible) settingsForm.RefreshControls();
     }
 
