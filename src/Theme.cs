@@ -33,11 +33,44 @@ class MenuTheme
     public Color Hover { get { return Mix(Input, Text, 0.12); } }               // botão com o mouse em cima
     public Color Line { get { return Mix(Nav, Text, 0.14); } }                  // linha do cabeçalho
     public Color Capture { get { return Mix(Input, Accent, 0.35); } }           // campo esperando uma tecla
+
+    // ---- cores do que aparece por cima do jogo (painel de senhas, avisos, caixinhas) ----
+    public bool IsDark { get { return Bg.GetBrightness() < 0.5f; } }
+    public string Font { get { return string.IsNullOrEmpty(FontName) ? "Segoe UI" : FontName; } }
+    // cor das senhas do grupo: o destaque girado no círculo de cores (ou azul, se o destaque for cinza)
+    public Color Group
+    {
+        get
+        {
+            if (Accent.GetSaturation() < 0.15f) return IsDark ? Color.FromArgb(90, 175, 255) : Color.FromArgb(30, 100, 200);
+            var c = Rotate(Accent, 150);
+            return IsDark ? Mix(c, Color.White, 0.15) : Mix(c, Color.Black, 0.2);
+        }
+    }
+
+    static Color Rotate(Color c, float deg)
+    {
+        float h = ((c.GetHue() + deg) % 360f) / 360f, s = c.GetSaturation(), l = c.GetBrightness();
+        float q = l < 0.5f ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+        Func<float, float> f = t =>
+        {
+            if (t < 0) t += 1; if (t > 1) t -= 1;
+            if (t < 1 / 6f) return p + (q - p) * 6 * t;
+            if (t < 0.5f) return q;
+            if (t < 2 / 3f) return p + (q - p) * (2 / 3f - t) * 6;
+            return p;
+        };
+        return Color.FromArgb((int)(255 * f(h + 1 / 3f)), (int)(255 * f(h)), (int)(255 * f(h - 1 / 3f)));
+    }
 }
 
 static class Themes
 {
     public const string Custom = "Personalizado";
+
+    // Tema em uso (o app atualiza quando o tema muda). Usado pelo painel de senhas, avisos e caixinhas.
+    public static MenuTheme Active;
+    public static MenuTheme A { get { return Active ?? Default; } }
     public const string Windows = "Windows 11";
 
     // Tema que acompanha o Windows: claro/escuro e cor de destaque do sistema.

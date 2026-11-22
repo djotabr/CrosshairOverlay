@@ -93,8 +93,8 @@ class ShotViewer : Form
         pic = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Black };
         info = new Label
         {
-            Dock = DockStyle.Top, Height = 34, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(22, 23, 28),
-            ForeColor = Color.White, Font = new Font("Segoe UI", 11f, FontStyle.Bold)
+            Dock = DockStyle.Top, Height = 34, TextAlign = ContentAlignment.MiddleCenter, BackColor = Themes.A.Nav,
+            ForeColor = Themes.A.Text, Font = new Font(Themes.A.Font, 11f, FontStyle.Bold)
         };
         Controls.Add(pic);
         Controls.Add(info);

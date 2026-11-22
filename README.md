@@ -12,6 +12,14 @@ O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar 
 
 Uma ⭐ aqui no GitHub também ajuda.
 
+## Novidades da 2.2.0
+- **O painel de senhas no jogo segue o tema:** cores, borda, fonte e, no Windows XP, a faixa azul no título. As senhas do grupo ganham uma cor própria.
+- **Os avisos e as caixinhas também seguem o tema:** avisos do topo, caixinhas de anotar e de apagar senha e visualizador de prints. Tudo muda na hora quando você troca de tema.
+- **Posição do painel de senhas:**
+  - **8 posições prontas** numa grade que representa a tela (cantos, topo, embaixo e laterais).
+  - Nas posições prontas, o painel cresce para dentro da tela quando você anota mais senhas.
+  - Também dá para **ajustar a posição** clicando na tela ou pelo X e Y.
+
 ## Novidades da 2.1.0
 - **5 idiomas:** português, English, Español, Français e Deutsch.
 - **Escolha do idioma:** na primeira vez o app usa o idioma do Windows, ou inglês se não houver tradução. Para trocar, use a aba **Aparência → Idioma / Language**.

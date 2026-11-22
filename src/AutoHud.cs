@@ -96,8 +96,9 @@ static class GameToast
 {
     public static Bitmap Render(Bitmap icon, string line1, string line2)
     {
-        using (var f1 = new Font("Segoe UI", 15f, FontStyle.Bold, GraphicsUnit.Pixel))
-        using (var f2 = new Font("Segoe UI", 13f, FontStyle.Regular, GraphicsUnit.Pixel))
+        var th = Themes.A;
+        using (var f1 = new Font(th.Font, 15f, FontStyle.Bold, GraphicsUnit.Pixel))
+        using (var f2 = new Font(th.Font, 13f, FontStyle.Regular, GraphicsUnit.Pixel))
         {
             Size s1, s2;
             using (var tmp = new Bitmap(1, 1)) using (var g0 = Graphics.FromImage(tmp))
@@ -117,13 +118,21 @@ static class GameToast
                     path.AddArc(r.X, r.Y, d, d, 180, 90); path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
                     path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90); path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
                     path.CloseFigure();
-                    using (var b = new SolidBrush(Color.FromArgb(215, 18, 20, 26))) g.FillPath(b, path);
-                    using (var p = new Pen(Color.FromArgb(230, 0, 200, 120), 1.5f)) g.DrawPath(p, path);
+                    using (var b = new SolidBrush(Color.FromArgb(235, th.Bg))) g.FillPath(b, path);
+                    if (!th.HeaderTop.IsEmpty)   // Windows XP: barrinha azul à esquerda
+                        using (var b = new LinearGradientBrush(new RectangleF(r.X, r.Y, 8, r.Height), th.HeaderTop, th.HeaderBottom, 90f))
+                        using (var bar = new GraphicsPath())
+                        {
+                            bar.AddArc(r.X, r.Y, 18, 18, 180, 90); bar.AddLine(r.X + 9, r.Y, r.X + 7, r.Y); bar.AddLine(r.X + 7, r.Bottom, r.X + 9, r.Bottom);
+                            bar.AddArc(r.X, r.Bottom - 18, 18, 18, 90, 90); bar.CloseFigure();
+                            g.FillPath(b, bar);
+                        }
+                    using (var p = new Pen(Color.FromArgb(230, th.Accent), 1.5f)) g.DrawPath(p, path);
                 }
                 if (icon != null) g.DrawImage(icon, new Rectangle(2 + pad, 2 + (h - ic) / 2, ic, ic));
                 float tx = 2 + pad + ic + 12;
-                g.DrawString(line1, f1, Brushes.White, tx, 2 + 12);
-                using (var b = new SolidBrush(Color.FromArgb(255, 170, 230, 200))) g.DrawString(line2, f2, b, tx, 2 + 34);
+                using (var b = new SolidBrush(th.Text)) g.DrawString(line1, f1, b, tx, 2 + 12);
+                using (var b = new SolidBrush(Ui.Mix(th.Dim, th.Accent, 0.35))) g.DrawString(line2, f2, b, tx, 2 + 34);
             }
             return bmp;
         }

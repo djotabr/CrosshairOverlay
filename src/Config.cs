@@ -102,7 +102,8 @@ public class AppSettings
     public int ShotViewKey = (int)(Keys.Control | Keys.Alt | Keys.O);   // ver prints recebidos
     public bool AutoUpdate = true;          // baixar versões novas que chegam pelo grupo   // caixinha de anotar começa em "grupo"
     public int NotesFontSize = 15;
-    public int NotesX = 16, NotesY = 16;   // posição do bloco (canto superior esquerdo), relativa ao monitor da mira
+    public int NotesX = 16, NotesY = 16;
+    public int NotesAnchor = -1;        // posição pronta do bloco (0-8 numa grade 3x3, sem o centro); -1 = personalizada (NotesX/NotesY)   // posição do bloco (canto superior esquerdo), relativa ao monitor da mira
 
     public bool AutoSound = true;       // bipe a cada aperto
     public int AutoVolume = 40;

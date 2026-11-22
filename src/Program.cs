@@ -566,6 +566,7 @@ class CrosshairApp : ApplicationContext
         AppIcon = LoadIcon();
         Settings = Storage.LoadSettings();
         L.Set(Settings.Language);
+        Themes.Active = Themes.Current(Settings);
         // versões antigas usavam Ctrl+Alt+P para o print, que é o mesmo atalho de "próximo perfil"
         if (Settings.ShotKey == Settings.NextProfileKey) Settings.ShotKey = (int)(Keys.Control | Keys.Alt | Keys.S);
         Profiles = Storage.ListProfiles();
@@ -773,6 +774,15 @@ class CrosshairApp : ApplicationContext
         using (var bmp = Notes.Render(NoteLines, gLines, gTitle, Settings.NotesFontSize, Hotkeys.ToText(Settings.NotesAddKey)))
         {
             notesWidth = bmp.Width; notesHeight = bmp.Height;
+            int a = Settings.NotesAnchor;
+            if (a >= 0 && a <= 8 && a != 4)
+            {
+                // posição pronta: recalcula com o tamanho atual do bloco (cresce para o lado certo)
+                const int m = 16;
+                int col = a % 3, row = a / 3;
+                Settings.NotesX = col == 0 ? m : col == 1 ? (sc.Width - bmp.Width) / 2 : sc.Width - bmp.Width - m;
+                Settings.NotesY = row == 0 ? m : row == 1 ? (sc.Height - bmp.Height) / 2 : sc.Height - bmp.Height - m;
+            }
             // mantém o bloco inteiro dentro da tela
             int x = Util.Clamp(Settings.NotesX, 0, Math.Max(0, sc.Width - bmp.Width));
             int y = Util.Clamp(Settings.NotesY, 0, Math.Max(0, sc.Height - bmp.Height));
@@ -1189,6 +1199,12 @@ class CrosshairApp : ApplicationContext
 
     public void RebuildSettings()
     {
+        // tema pode ter mudado: painel de senhas, avisos e caixinhas acompanham
+        Themes.Active = Themes.Current(Settings);
+        if (quickNote != null && !quickNote.Visible) { quickNote.Close(); quickNote = null; }
+        if (deleteNotes != null && !deleteNotes.Visible) { deleteNotes.Close(); deleteNotes = null; }
+        if (shotViewer != null && !shotViewer.Visible) { shotViewer.Close(); shotViewer = null; }
+        UpdateNotes();
         if (settingsForm == null || settingsForm.IsDisposed) return;
         var old = settingsForm;
         int page = old.CurrentPage;

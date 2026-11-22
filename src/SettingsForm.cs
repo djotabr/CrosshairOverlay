@@ -1396,6 +1396,7 @@ class SettingsForm : Form
             pp.ShowDialog();
             if (pp.Picked.HasValue)
             {
+                app.Settings.NotesAnchor = -1;
                 app.Settings.NotesX = Math.Max(0, pp.Picked.Value.X - sc.X);
                 app.Settings.NotesY = Math.Max(0, pp.Picked.Value.Y - sc.Y);
                 app.SaveSettings(); app.UpdateNotes();
@@ -1444,13 +1445,38 @@ class SettingsForm : Form
         BuildGroupSection(p);
 
         Header(p, L.T("Posição do bloco"));
-        Flow(p,
-            Btn(L.T("Posicionar clicando na tela"), 200, (s, e) => PickNotesPosition()),
-            Btn("↖", 36, (s, e) => NotesCorner(0)), Btn("↗", 36, (s, e) => NotesCorner(1)),
-            Btn("↙", 36, (s, e) => NotesCorner(2)), Btn("↘", 36, (s, e) => NotesCorner(3)));
-        Slider(p, L.T("Horizontal (X)"), 0, 7680, () => S.NotesX, v => { S.NotesX = v; app.SaveSettings(); app.UpdateNotes(); });
-        Slider(p, L.T("Vertical (Y)"), 0, 4320, () => S.NotesY, v => { S.NotesY = v; app.SaveSettings(); app.UpdateNotes(); });
-        Note(p, L.T("\"Posicionar clicando\": clique onde deve ficar o canto superior esquerdo do bloco. As setas levam o bloco para um dos cantos."));
+        p.Controls.Add(new Label { Text = L.T("Posições prontas"), AutoSize = true, ForeColor = DIM, Margin = new Padding(0, 0, 0, 4) });
+        // grade 3x3 representando a tela (o centro fica vazio: é onde está a mira)
+        string[] arrows = { "↖", "↑", "↗", "←", "", "→", "↙", "↓", "↘" };
+        string[] posNames = { "Canto superior esquerdo", "Topo, centro", "Canto superior direito", "Meio, esquerda", "",
+                              "Meio, direita", "Canto inferior esquerdo", "Embaixo, centro", "Canto inferior direito" };
+        var grid = new Panel { Width = 3 * 58 + 8, Height = 3 * 40 + 8, Margin = new Padding(0, 0, 16, 4) };
+        var posLbl = new Label { AutoSize = true, ForeColor = FG, Font = Ui.Font(10f, FontStyle.Bold), Margin = new Padding(0, 46, 0, 0) };
+        for (int i = 0; i < 9; i++)
+        {
+            if (i == 4) continue;
+            int idx = i;
+            var b = (RoundButton)Btn(arrows[i], 54, (s, e) => { S.NotesAnchor = idx; app.UpdateNotes(); app.SaveSettings(); RefreshControls(); });
+            b.Width = 54; b.Height = 36; b.Font = new Font("Segoe UI Symbol", 12f);
+            b.Location = new Point(4 + (i % 3) * 58, 4 + (i / 3) * 40);
+            refreshers.Add(() =>
+            {
+                bool sel = S.NotesAnchor == idx;
+                b.BackColor = sel ? ACCENT_DARK : INPUT;
+                b.ForeColor = sel ? Color.White : FG;
+                b.Invalidate();
+            });
+            grid.Controls.Add(b);
+        }
+        refreshers.Add(() => posLbl.Text = S.NotesAnchor >= 0 && S.NotesAnchor <= 8 && S.NotesAnchor != 4
+            ? L.T(posNames[S.NotesAnchor]) : L.T("Personalizada"));
+        Flow(p, grid, posLbl);
+
+        p.Controls.Add(new Label { Text = L.T("Ajustar posição"), AutoSize = true, ForeColor = DIM, Margin = new Padding(0, 8, 0, 4) });
+        Flow(p, Btn(L.T("Posicionar clicando na tela"), 200, (s, e) => PickNotesPosition()));
+        Slider(p, L.T("Horizontal (X)"), 0, 7680, () => S.NotesX, v => { S.NotesX = v; S.NotesAnchor = -1; app.SaveSettings(); app.UpdateNotes(); });
+        Slider(p, L.T("Vertical (Y)"), 0, 4320, () => S.NotesY, v => { S.NotesY = v; S.NotesAnchor = -1; app.SaveSettings(); app.UpdateNotes(); });
+        Note(p, L.T("Escolha uma posição pronta ou ajuste à vontade: clique na tela onde deve ficar o canto superior esquerdo do bloco, ou use os controles X e Y."));
 
         Header(p, L.T("Atalhos (funcionam dentro do jogo)"));
         Flow(p, Lbl(L.T("Anotar rápido"), 170), HotkeyBox(() => S.NotesAddKey, v => { S.NotesAddKey = v; app.UpdateNotes(); }));

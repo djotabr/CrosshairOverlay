@@ -60,8 +60,9 @@ static class Notes
             for (int j = Math.Max(0, G - MaxShown); j < G; j++) rows.Add(new KeyValuePair<string, int>((nl + j + 1) + ".  " + group[j], 4));
         }
 
-        using (var fTitle = new Font("Segoe UI", fontPx * 0.85f, FontStyle.Bold, GraphicsUnit.Pixel))
-        using (var fLine = new Font("Segoe UI", fontPx, FontStyle.Bold, GraphicsUnit.Pixel))
+        var th = Themes.A;
+        using (var fTitle = new Font(th.Font, fontPx * 0.85f, FontStyle.Bold, GraphicsUnit.Pixel))
+        using (var fLine = new Font(th.Font, fontPx, FontStyle.Bold, GraphicsUnit.Pixel))
         {
             float w = 0, lineH = fontPx * 1.45f, titleH = fontPx * 1.5f, gap = fontPx * 0.5f;
             int pad = (int)(fontPx * 0.7f);
@@ -86,18 +87,32 @@ static class Notes
                     path.AddArc(r.X, r.Y, d, d, 180, 90); path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
                     path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90); path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
                     path.CloseFigure();
-                    using (var b = new SolidBrush(Color.FromArgb(185, 18, 20, 26))) g.FillPath(b, path);
-                    using (var p = new Pen(Color.FromArgb(220, 0, 200, 120), 1.5f)) g.DrawPath(p, path);
+                    using (var b = new SolidBrush(Color.FromArgb(th.IsDark ? 195 : 225, th.Bg))) g.FillPath(b, path);
+                    using (var p = new Pen(Color.FromArgb(220, th.Accent), 1.5f)) g.DrawPath(p, path);
+                }
+                // tema com faixa no topo (Windows XP): faixa colorida atrás do primeiro título
+                if (!th.HeaderTop.IsEmpty)
+                {
+                    var band = new RectangleF(r.X + 1, r.Y + 1, r.Width - 2, pad * 0.6f + fontPx * 1.5f);
+                    using (var clip = new GraphicsPath())
+                    {
+                        float d2 = 13;
+                        clip.AddArc(band.X, band.Y, d2, d2, 180, 90); clip.AddArc(band.Right - d2, band.Y, d2, d2, 270, 90);
+                        clip.AddLine(band.Right, band.Bottom, band.X, band.Bottom); clip.CloseFigure();
+                        using (var b = new LinearGradientBrush(band, th.HeaderTop, th.HeaderBottom, 90f)) g.FillPath(b, clip);
+                    }
                 }
                 float y = r.Y + pad * 0.6f;
-                using (var shadow = new SolidBrush(Color.FromArgb(200, 0, 0, 0)))
+                using (var shadow = new SolidBrush(th.IsDark ? Color.FromArgb(200, 0, 0, 0) : Color.Transparent))
                     for (int i = 0; i < rows.Count; i++)
                     {
                         int k = rows[i].Value;
                         bool title = k == 0 || k == 3;
                         if (title && i > 0) y += gap;
-                        Color c = k == 0 ? Color.FromArgb(255, 0, 220, 130) : k == 3 ? Color.FromArgb(255, 90, 175, 255)
-                                : k == 2 ? Color.FromArgb(255, 150, 155, 170) : k == 4 ? Color.FromArgb(255, 210, 230, 255) : Color.White;
+                        Color c = k == 0 ? (i == 0 && !th.HeaderTop.IsEmpty ? Color.White : th.Accent)
+                                : k == 3 ? (i == 0 && !th.HeaderTop.IsEmpty ? Color.White : th.Group)
+                                : k == 2 ? th.Dim
+                                : k == 4 ? Ui.Mix(th.Text, th.Group, 0.3) : th.Text;
                         var f = title ? fTitle : fLine;
                         using (var b = new SolidBrush(c))
                         {
@@ -115,8 +130,8 @@ static class Notes
 // Caixinha que aparece por cima do jogo para anotar rápido. Enter salva, Esc cancela.
 class QuickNoteForm : Form
 {
-    static readonly Color BG = Color.FromArgb(22, 23, 28);
     readonly TextBox tb;
+    readonly MenuTheme th = Themes.A;
     IntPtr previous;
     readonly Label head;
     bool groupAvailable, toGroup;
@@ -128,8 +143,8 @@ class QuickNoteForm : Form
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
         ShowInTaskbar = false;
-        BackColor = BG;
-        ForeColor = Color.White;
+        BackColor = th.Bg;
+        ForeColor = th.Text;
         Font = new Font("Segoe UI", 10f);
         ClientSize = new Size(440, 74);
         Padding = new Padding(1);
@@ -137,12 +152,12 @@ class QuickNoteForm : Form
 
         var l = head = new Label
         {
-            Text = L.T("Nova anotação   (Enter salva  •  Esc cancela)"), ForeColor = Color.FromArgb(0, 220, 130),
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold), Location = new Point(12, 9), AutoSize = true
+            Text = L.T("Nova anotação   (Enter salva  •  Esc cancela)"), ForeColor = th.Accent,
+            Font = new Font(th.Font, 9f, FontStyle.Bold), Location = new Point(12, 9), AutoSize = true
         };
         tb = new TextBox
         {
-            Location = new Point(12, 34), Width = 416, BackColor = Color.FromArgb(46, 49, 58), ForeColor = Color.White,
+            Location = new Point(12, 34), Width = 416, BackColor = th.Input, ForeColor = th.Text,
             BorderStyle = BorderStyle.FixedSingle, Font = new Font("Segoe UI", 12f)
         };
         Controls.AddRange(new Control[] { l, tb });
@@ -159,17 +174,17 @@ class QuickNoteForm : Form
         if (!groupAvailable)
         {
             head.Text = L.T("Nova anotação   (Enter salva  •  Esc cancela)");
-            head.ForeColor = Color.FromArgb(0, 220, 130);
+            head.ForeColor = th.Accent;
         }
         else if (toGroup)
         {
             head.Text = L.T("Nova anotação  →  GRUPO   (Tab: só minha  •  Enter salva  •  Esc)");
-            head.ForeColor = Color.FromArgb(90, 175, 255);
+            head.ForeColor = th.Group;
         }
         else
         {
             head.Text = L.T("Nova anotação  →  SÓ MINHA   (Tab: grupo  •  Enter salva  •  Esc)");
-            head.ForeColor = Color.FromArgb(0, 220, 130);
+            head.ForeColor = th.Accent;
         }
         Invalidate();
     }
@@ -183,8 +198,8 @@ class QuickNoteForm : Form
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        var c = groupAvailable && toGroup ? Color.FromArgb(90, 175, 255) : Color.FromArgb(0, 200, 120);
-        using (var pen = new Pen(c, 1)) e.Graphics.DrawRectangle(pen, 0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
+        var c = groupAvailable && toGroup ? th.Group : th.Accent;
+        using (var pen = new Pen(c, 2)) e.Graphics.DrawRectangle(pen, 0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
     }
 
     public static void Dbg(string m) { string f = Environment.GetEnvironmentVariable("CROSSHAIR_DEBUG"); if (!string.IsNullOrEmpty(f)) try { File.AppendAllText(f, DateTime.Now.ToString("HH:mm:ss.fff") + " " + m + "\r\n"); } catch { } }
@@ -218,8 +233,8 @@ class QuickNoteForm : Form
 // 1-9 apaga na hora • ↑↓ + Delete apaga a selecionada • Z desfaz • Esc/Enter fecha.
 class DeleteNotesForm : Form
 {
-    static readonly Color BG = Color.FromArgb(22, 23, 28);
     readonly ListBox list;
+    readonly MenuTheme th = Themes.A;
     readonly Label hint;
     IntPtr previous;
     readonly Func<List<string>> getNotes;
@@ -233,26 +248,26 @@ class DeleteNotesForm : Form
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
         ShowInTaskbar = false;
-        BackColor = BG;
-        ForeColor = Color.White;
+        BackColor = th.Bg;
+        ForeColor = th.Text;
         Font = new Font("Segoe UI", 10f);
         Padding = new Padding(1);
         KeyPreview = true;
 
         var title = new Label
         {
-            Text = L.T("APAGAR SENHA"), ForeColor = Color.FromArgb(255, 110, 110),
+            Text = L.T("APAGAR SENHA"), ForeColor = th.IsDark ? Color.FromArgb(255, 110, 110) : Color.FromArgb(200, 40, 40),
             Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), Location = new Point(12, 8), AutoSize = true
         };
         hint = new Label
         {
             Text = L.T("1-9 apaga na hora  •  ↑↓ + Delete  •  Z desfaz  •  Esc fecha"),
-            ForeColor = Color.FromArgb(150, 155, 170), Font = new Font("Segoe UI", 8.5f), Location = new Point(12, 28), AutoSize = true
+            ForeColor = th.Dim, Font = new Font(th.Font, 8.5f), Location = new Point(12, 28), AutoSize = true
         };
         list = new ListBox
         {
             Location = new Point(12, 50), Width = 456, BorderStyle = BorderStyle.None,
-            BackColor = Color.FromArgb(32, 34, 41), ForeColor = Color.White, Font = new Font("Segoe UI", 12f),
+            BackColor = Ui.Mix(th.Bg, th.Text, 0.06), ForeColor = th.Text, Font = new Font(th.Font, 12f),
             IntegralHeight = false
         };
         Controls.AddRange(new Control[] { title, hint, list });
@@ -297,7 +312,7 @@ class DeleteNotesForm : Form
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        using (var pen = new Pen(Color.FromArgb(220, 80, 80), 1)) e.Graphics.DrawRectangle(pen, 0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
+        using (var pen = new Pen(Color.FromArgb(220, 80, 80), 2)) e.Graphics.DrawRectangle(pen, 0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
     }
 
     public void Open(Point at, Rectangle screen)
