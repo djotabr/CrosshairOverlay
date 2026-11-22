@@ -1,0 +1,6 @@
+# gerados pelo build / atualização
+*.exe
+*.sig
+src/BuildInfo.cs
+# nunca publicar a chave de assinatura
+*private*.xml
