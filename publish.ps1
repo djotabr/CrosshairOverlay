@@ -28,5 +28,9 @@ $tag = "v$ver"
 $ErrorActionPreference = 'Continue'
 gh release view $tag --repo $repo 2>&1 | Out-Null
 if ($LASTEXITCODE -eq 0) { $tag = "v$ver-$build" }
-gh release create $tag CrosshairOverlay.exe CrosshairOverlay.sig --repo $repo --title "Crosshair Overlay $ver ($when)" --notes $Notes
+# notas vão por arquivo: o PowerShell 5 quebra textos com aspas ao passar para programas
+$notesFile = Join-Path $env:TEMP "crosshair-release-notes.md"
+[IO.File]::WriteAllText($notesFile, $Notes, (New-Object Text.UTF8Encoding $false))
+gh release create $tag CrosshairOverlay.exe CrosshairOverlay.sig --repo $repo --title "Crosshair Overlay $ver ($when)" --notes-file $notesFile
+Remove-Item $notesFile -ErrorAction SilentlyContinue
 if ($LASTEXITCODE -eq 0) { Write-Host "Publicado: https://github.com/$repo/releases/tag/$tag" }
