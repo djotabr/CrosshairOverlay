@@ -9,6 +9,7 @@ $repo = 'djotabr/CrosshairOverlay'
 & .\build.ps1
 if (-not (Test-Path CrosshairOverlay.exe)) { throw "build falhou" }
 $build = [regex]::Match((Get-Content src\BuildInfo.cs -Raw), 'Build = (\d+)').Groups[1].Value
+$ver = [regex]::Match((Get-Content src\AssemblyInfo.cs -Raw), 'Version = "([^"]+)"').Groups[1].Value
 
 # Assina o exe com a chave privada (fica só neste PC)
 $priv = Join-Path $env:APPDATA 'CrosshairOverlay\update-private.xml'
@@ -18,9 +19,14 @@ $sha = ([BitConverter]::ToString($shaBytes) -replace '-', '').ToLowerInvariant()
 $rsa = New-Object Security.Cryptography.RSACryptoServiceProvider (New-Object Security.Cryptography.CspParameters 24)
 $rsa.FromXmlString([IO.File]::ReadAllText($priv))
 $sig = [Convert]::ToBase64String($rsa.SignHash($shaBytes, [Security.Cryptography.CryptoConfig]::MapNameToOID('SHA256')))
-[IO.File]::WriteAllText((Join-Path $PSScriptRoot 'CrosshairOverlay.sig'), "$build`n$sha`n$sig")
+[IO.File]::WriteAllText((Join-Path $PSScriptRoot 'CrosshairOverlay.sig'), "$build`n$sha`n$sig`n$ver")
 
 $when = [DateTime]::ParseExact($build, 'yyyyMMddHHmm', $null).ToLocalTime().ToString('dd/MM/yyyy HH:mm')
-if (-not $Notes) { $Notes = "Versão de $when" }
-gh release create "v$build" CrosshairOverlay.exe CrosshairOverlay.sig --repo $repo --title "Versão $when" --notes $Notes
-if ($LASTEXITCODE -eq 0) { Write-Host "Publicado: https://github.com/$repo/releases/tag/v$build" }
+if (-not $Notes) { $Notes = "Versão $ver de $when" }
+# tag v2.0.0; se essa versão já foi publicada antes, v2.0.0-<build>
+$tag = "v$ver"
+$ErrorActionPreference = 'Continue'
+gh release view $tag --repo $repo 2>&1 | Out-Null
+if ($LASTEXITCODE -eq 0) { $tag = "v$ver-$build" }
+gh release create $tag CrosshairOverlay.exe CrosshairOverlay.sig --repo $repo --title "Crosshair Overlay $ver ($when)" --notes $Notes
+if ($LASTEXITCODE -eq 0) { Write-Host "Publicado: https://github.com/$repo/releases/tag/$tag" }

@@ -13,15 +13,32 @@ class BufferedPanel : Panel
 
 class SettingsForm : Form
 {
-    static readonly Color BG = Color.FromArgb(22, 23, 28);
-    static readonly Color PANEL = Color.FromArgb(32, 34, 41);
-    static readonly Color INPUT = Color.FromArgb(46, 49, 58);
-    static readonly Color BORDER = Color.FromArgb(72, 76, 88);
-    static readonly Color FG = Color.FromArgb(232, 234, 240);
-    static readonly Color DIM = Color.FromArgb(150, 155, 170);
-    static readonly Color ACCENT = Color.FromArgb(0, 210, 130);
-    static readonly Color ACCENT_DARK = Color.FromArgb(0, 140, 90);
+    // Cores do tema escolhido (o menu é recriado quando o tema muda).
+    static Color BG, PANEL, INPUT, BORDER, FG, DIM, ACCENT, ACCENT_DARK, NAV, LINE, HOVER, CAPTURE, CARD, SELECTED, NAVHOVER;
+    static Color HEAD_A, HEAD_B, LOGO, CLOSE;
+    static string TITLE_FONT;
+    static bool HasHeader { get { return !HEAD_A.IsEmpty; } }
+
+    static void ApplyTheme(MenuTheme t)
+    {
+        BG = t.Bg; PANEL = t.Bg; INPUT = t.Input; BORDER = t.Border; FG = t.Text; DIM = t.Dim;
+        ACCENT = t.Accent; ACCENT_DARK = t.AccentDark; NAV = t.Nav; LINE = t.Line; HOVER = t.Hover; CAPTURE = t.Capture;
+        CARD = Ui.Mix(t.Bg, t.Text, 0.045);
+        SELECTED = Ui.Mix(t.Nav, t.Accent, 0.18);
+        NAVHOVER = Ui.Mix(t.Nav, t.Text, 0.07);
+        INPUT = Ui.Mix(CARD, t.Input, 0.85);
+        HEAD_A = t.HeaderTop; HEAD_B = t.HeaderBottom; LOGO = t.Logo.IsEmpty ? t.Accent : t.Logo; CLOSE = t.Close; TITLE_FONT = t.TitleFontName;
+        Ui.FamilyOverride = t.FontName;
+        Ui.Bg = BG; Ui.Card = CARD; Ui.Input = INPUT; Ui.Border = BORDER; Ui.Text = FG; Ui.Dim = DIM; Ui.Accent = ACCENT; Ui.Nav = NAV;
+    }
     const int RowW = 505;
+    // Painel lateral: coluna de abas à esquerda + conteúdo à direita, altura da tela inteira.
+    const int NavW = 208, HeaderH = 74, PageW = 600, PanelW = NavW + PageW + 14, BarH = 740;
+    Button closeBtn;
+    Label escLbl;
+    int Pos { get { return Util.Clamp(app.Settings.MenuPos, 0, 4); } }
+    public int CurrentPage { get { return currentPage; } }
+    public IntPtr PreviousWindow { get { return previousWindow; } }
 
     readonly CrosshairApp app;
     bool suppress;
@@ -39,6 +56,7 @@ class SettingsForm : Form
     public SettingsForm(CrosshairApp app)
     {
         this.app = app;
+        ApplyTheme(Themes.Current(app.Settings));
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -47,24 +65,36 @@ class SettingsForm : Form
         MaximizeBox = false;
         Opacity = Util.Clamp(app.Settings.MenuOpacity, 40, 100) / 100.0;
         Padding = new Padding(1);
-        StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(900, 640);
+        StartPosition = FormStartPosition.Manual;
+        ShowInTaskbar = false;
+        KeyPreview = true;
+        ClientSize = new Size(PanelW, 900);
         BackColor = BG;
         ForeColor = FG;
-        Font = new Font("Segoe UI", 9f);
+        Font = Ui.Font(9.5f);
         TopMost = true;
         Icon = app.AppIcon;
 
         BuildLeft();
         BuildTabs();
-        var close = Btn("✕", 30, (s, e) => Hide());
-        close.Location = new Point(ClientSize.Width - 44, 14);
+        var close = closeBtn = Btn("✕", 34, (s, e) => SlideOut());
+        close.Location = new Point(PanelW - 50, 16);
         close.Height = 34;
         close.FlatAppearance.MouseOverBackColor = Color.FromArgb(190, 50, 50);
+        if (!CLOSE.IsEmpty)   // botão fechar vermelho do XP
+        {
+            close.BackColor = CLOSE; close.ForeColor = Color.White;
+            close.FlatAppearance.MouseOverBackColor = Ui.Mix(CLOSE, Color.White, 0.2);
+            ((RoundButton)close).Radius = 5;
+            ((RoundButton)close).Surface = Ui.Mix(HEAD_A, HEAD_B, 0.45);
+        }
         Controls.Add(close);
         MakeDraggable(this);
         ResumeLayout(false);
         PerformLayout();
+        Resize += (s, e) => LayoutPanel();
+        LayoutPanel();
+        slideTimer.Tick += SlideTick;
 
         FormClosing += (s, e) =>
         {
@@ -72,12 +102,159 @@ class SettingsForm : Form
         };
     }
 
+    // ---------- painel lateral: entra da esquerda para a direita ----------
+
+    readonly Timer slideTimer = new Timer { Interval = 10 };
+    readonly Stopwatch slideClock = new Stopwatch();
+    bool slidingIn;
+    Point slideFrom, slideTo;
+    Point? windowLoc;           // modo janela: lembra onde o menu foi arrastado
+    IntPtr previousWindow;
+    const int SlideMs = 170;
+
+    public bool IsOpen { get { return Visible && (slidingIn || !slideTimer.Enabled); } }
+
+    // Onde o menu fica quando aberto, conforme a posição escolhida.
+    Rectangle ShownRect(Rectangle sc)
+    {
+        const int G = 10;   // folga da borda da tela: o painel "flutua"
+        int barH = Math.Min(sc.Height - G * 2, Util.Clamp((int)(sc.Height * 0.42), 470, 560));
+        if (Pos == 4) barH = Math.Min(sc.Height - G * 2, BarH);
+        switch (Pos)
+        {
+            case 0: return new Rectangle(sc.X + G, sc.Y + G, PanelW, sc.Height - G * 2);                      // esquerda
+            case 1: return new Rectangle(sc.Right - PanelW - G, sc.Y + G, PanelW, sc.Height - G * 2);         // direita
+            case 2: return new Rectangle(sc.X + G, sc.Y + G, sc.Width - G * 2, barH);                         // em cima
+            case 3: return new Rectangle(sc.X + G, sc.Bottom - barH - G, sc.Width - G * 2, barH);             // embaixo
+            default:                                                                             // janela
+                int h = Math.Min(sc.Height - 60, BarH);
+                var r = new Rectangle(sc.X + (sc.Width - PanelW) / 2, sc.Y + (sc.Height - h) / 2, PanelW, h);
+                if (windowLoc.HasValue && sc.Contains(new Point(windowLoc.Value.X + 40, windowLoc.Value.Y + 20))) r.Location = windowLoc.Value;
+                return r;
+        }
+    }
+
+    // De onde ele entra (fora da tela).
+    Point HiddenLoc(Rectangle shown, Rectangle sc)
+    {
+        switch (Pos)
+        {
+            case 0: return new Point(sc.X - shown.Width, shown.Y);
+            case 1: return new Point(sc.Right, shown.Y);
+            case 2: return new Point(shown.X, sc.Y - shown.Height);
+            case 3: return new Point(shown.X, sc.Bottom);
+            default: return shown.Location;
+        }
+    }
+
+    public void SlideIn(Rectangle screen)
+    {
+        bool wasVisible = Visible && slidingIn;
+        if (!Visible) previousWindow = Native.GetForegroundWindow();
+        var shown = ShownRect(screen);
+        Size = shown.Size;
+        if (!Visible) Location = HiddenLoc(shown, screen);
+        slidingIn = true;
+        slideFrom = Location; slideTo = shown.Location;
+        Show();
+        Activate();
+        Native.ForceForeground(Handle);
+        if (Pos == 4 || wasVisible) { Location = shown.Location; return; }   // janela: aparece direto
+        slideClock.Restart();
+        slideTimer.Start();
+    }
+
+    // Abre já no lugar, sem animação (usado ao trocar tema/posição com o menu aberto).
+    public void OpenInstant(Rectangle screen, IntPtr previous)
+    {
+        previousWindow = previous;
+        Bounds = ShownRect(screen);
+        slidingIn = true;
+        Show();
+        Activate();
+        Native.ForceForeground(Handle);
+    }
+
+    public void SlideOut()
+    {
+        if (!Visible) return;
+        slidingIn = false;
+        if (Pos == 4)
+        {
+            windowLoc = Location;
+            FinishHide();
+            return;
+        }
+        var sc = Screen.FromRectangle(Bounds).Bounds;
+        slideFrom = Location; slideTo = HiddenLoc(Bounds, sc);
+        slideClock.Restart();
+        slideTimer.Start();
+    }
+
+    void FinishHide()
+    {
+        slideTimer.Stop();
+        Hide();
+        if (previousWindow != IntPtr.Zero) Native.ForceForeground(previousWindow);   // volta para o jogo
+    }
+
+    void SlideTick(object sender, EventArgs e)
+    {
+        double t = Math.Min(1.0, slideClock.ElapsedMilliseconds / (double)SlideMs);
+        double k = slidingIn ? 1 - Math.Pow(1 - t, 3) : t * t;   // entrada freia no fim, saída acelera
+        Location = new Point(slideFrom.X + (int)Math.Round((slideTo.X - slideFrom.X) * k),
+                             slideFrom.Y + (int)Math.Round((slideTo.Y - slideFrom.Y) * k));
+        if (t < 1) return;
+        slideTimer.Stop();
+        if (!slidingIn) FinishHide();
+    }
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        // Esc fecha (menos quando está capturando um atalho / digitando num campo)
+        if (keyData == Keys.Escape && !(ActiveControl is TextBox)) { SlideOut(); return true; }
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    void LayoutPanel()
+    {
+        int h = ClientSize.Height;
+        using (var path = Ui.Round(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), 14)) Region = new Region(path);
+        Invalidate();
+        if (closeBtn != null) closeBtn.Left = ClientSize.Width - 50;
+        if (escLbl != null) escLbl.Location = new Point(ClientSize.Width - 50 - escLbl.Width - 10, 26);
+        // em cima / embaixo: a barra é larga, então as seções se espalham em colunas
+        bool wide = (Pos == 2 || Pos == 3) && ClientSize.Width > PanelW + 200;
+        int pw = NavW - 28;
+        foreach (FlowLayoutPanel pg in pages)
+        {
+            pg.WrapContents = wide;
+            pg.Location = new Point(NavW + 6, HeaderH);
+            pg.Size = new Size(wide ? ClientSize.Width - NavW - 16 - (pw + 40) : PageW, Math.Max(200, h - HeaderH - 10));
+        }
+        // prévia: no pé da coluna de abas; na barra larga, à direita
+        int px = 14, py = Math.Max(HeaderH + tabButtons.Count * 44 + 40, h - pw - 92);
+        if (wide) { px = ClientSize.Width - pw - 26; py = HeaderH + 26; }
+        previewLabel.Location = new Point(px, py - 22);
+        preview.Location = new Point(px, py);
+        preview.Size = new Size(pw, pw);
+        int bw = (pw - 8) / 3;
+        for (int i = 0; i < previewButtons.Count; i++)
+        {
+            var pb = (RoundButton)previewButtons[i];
+            pb.Width = bw;
+            pb.Margin = Padding.Empty;
+            pb.Surface = wide ? BG : NAV;
+            pb.Location = new Point(px + (i % 3) * (bw + 4), py + pw + 6 + (i / 3) * 32);
+        }
+    }
+
     // Sem barra de título: arrastar pelo fundo ou pelos textos do cabeçalho move o menu.
     void MakeDraggable(Control c)
     {
         c.MouseDown += (s, e) =>
         {
-            if (e.Button != MouseButtons.Left) return;
+            if (e.Button != MouseButtons.Left || Pos != 4) return;   // só no modo janela
             Native.ReleaseCapture();
             Native.SendMessage(Handle, 0xA1 /* WM_NCLBUTTONDOWN */, (IntPtr)2 /* HTCAPTION */, IntPtr.Zero);
         };
@@ -86,21 +263,44 @@ class SettingsForm : Form
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        using (var pen = new Pen(ACCENT_DARK, 1)) e.Graphics.DrawRectangle(pen, 0, 0, ClientSize.Width - 1, ClientSize.Height - 1);
+        var g = e.Graphics;
+        int W = ClientSize.Width, H = ClientSize.Height;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        if (HasHeader)
+        {
+            // faixa do topo em degradê (barra de título do Windows XP), com brilho na parte de cima
+            var hr = new Rectangle(0, 0, W, HeaderH - 6);
+            using (var b = new LinearGradientBrush(hr, HEAD_A, HEAD_B, 90f)) g.FillRectangle(b, hr);
+            using (var b = new SolidBrush(Color.FromArgb(60, Color.White))) g.FillRectangle(b, 0, 0, W, 3);
+            using (var b = new SolidBrush(NAV)) g.FillRectangle(b, 0, HeaderH - 6, NavW, H);
+        }
+        else
+            using (var b = new SolidBrush(NAV)) g.FillRectangle(b, 0, 0, NavW, H);   // coluna das abas (vai até o topo)
+        // logo: quadradinho colorido com uma mira
+        using (var path = Ui.Round(new RectangleF(16, 16, 32, 32), 9))
+        using (var b = new LinearGradientBrush(new RectangleF(16, 16, 32, 32), Ui.Mix(LOGO, Color.White, 0.15), Ui.Mix(LOGO, Color.Black, 0.35), 45f))
+            g.FillPath(b, path);
+        using (var pen = new Pen(Color.White, 2.2f))
+        {
+            g.DrawEllipse(pen, 24, 24, 16, 16);
+            g.DrawLine(pen, 32, 20, 32, 27); g.DrawLine(pen, 32, 37, 32, 44);
+            g.DrawLine(pen, 20, 32, 27, 32); g.DrawLine(pen, 37, 32, 44, 32);
+        }
+        // borda fina arredondada
+        using (var path = Ui.Round(new RectangleF(0.5f, 0.5f, W - 1.5f, H - 1.5f), 14))
+        using (var pen = new Pen(Color.FromArgb(150, ACCENT), 1.2f)) g.DrawPath(pen, path);
     }
 
     // ---------- helpers de UI ----------
 
     Button Btn(string text, int w, EventHandler click)
     {
-        var b = new Button
+        var b = new RoundButton
         {
-            Text = text, Width = w, Height = 28, FlatStyle = FlatStyle.Flat,
-            BackColor = INPUT, ForeColor = FG, Cursor = Cursors.Hand, Margin = new Padding(0, 0, 6, 6),
-            UseVisualStyleBackColor = false
+            Text = text, Width = w, Height = 30,
+            BackColor = INPUT, ForeColor = FG, Margin = new Padding(0, 0, 6, 6)
         };
-        b.FlatAppearance.BorderColor = BORDER;
-        b.FlatAppearance.MouseOverBackColor = Color.FromArgb(62, 66, 78);
+        b.FlatAppearance.MouseOverBackColor = Ui.Mix(INPUT, FG, 0.1);
         if (click != null) b.Click += click;
         return b;
     }
@@ -115,21 +315,35 @@ class SettingsForm : Form
         var p = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true,
-            Location = new Point(336, 54), Size = new Size(550, 574), BackColor = PANEL,
-            Padding = new Padding(14, 4, 8, 14), Visible = false
+            Location = new Point(NavW + 6, HeaderH), Size = new Size(PageW, 574), BackColor = BG,
+            Padding = new Padding(14, 6, 8, 14), Visible = false
+        };
+        Card current = null;
+        p.ControlAdded += (s, e) =>
+        {
+            var card = e.Control as Card;
+            if (card != null) { current = card; return; }
+            if (current == null) return;
+            p.Controls.Remove(e.Control);      // entra no cartão da seção atual
+            current.Controls.Add(e.Control);
         };
         Controls.Add(p);
         pages.Add(p);
+        // barras de rolagem escuras nos temas escuros (estilo do Explorador do Windows)
+        bool dark = BG.GetBrightness() < 0.5f;
+        p.HandleCreated += (s, e) => { try { Native.SetWindowTheme(p.Handle, dark ? "DarkMode_Explorer" : "Explorer", null); } catch { } };
         return p;
     }
 
     void Header(Control p, string text)
     {
-        p.Controls.Add(new Label
+        var card = new Card { BackColor = CARD, MinimumSize = new Size(RowW + 32, 0), MaximumSize = new Size(RowW + 32, 0) };
+        card.Controls.Add(new Label
         {
-            Text = text.ToUpperInvariant(), Width = RowW, Height = 30, TextAlign = ContentAlignment.BottomLeft,
-            Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = ACCENT, Margin = new Padding(0, 8, 0, 4)
+            Text = text, AutoSize = true, MaximumSize = new Size(RowW, 0),
+            Font = Ui.Font(11.5f, FontStyle.Bold), ForeColor = FG, Margin = new Padding(0, 0, 0, 8)
         });
+        p.Controls.Add(card);
     }
 
     void Note(Control p, string text)
@@ -154,7 +368,7 @@ class SettingsForm : Form
 
     CheckBox Chk(string text, Func<bool> get, Action<bool> set)
     {
-        var c = new CheckBox { Text = text, AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4), Cursor = Cursors.Hand };
+        var c = new ToggleSwitch { Text = text, AutoSize = true, ForeColor = FG, Margin = new Padding(0, 2, 16, 2) };
         c.CheckedChanged += (s, e) => { if (suppress) return; set(c.Checked); Changed(); };
         refreshers.Add(() => c.Checked = get());
         return c;
@@ -164,16 +378,15 @@ class SettingsForm : Form
     {
         var row = new Panel { Width = RowW, Height = 34, Margin = new Padding(0) };
         var l = new Label { Text = label, Location = new Point(0, 8), Size = new Size(165, 20) };
-        var tb = new TrackBar
+        var tb = new ModernSlider
         {
-            Minimum = min, Maximum = max, TickStyle = TickStyle.None, AutoSize = false,
-            Location = new Point(165, 3), Size = new Size(262, 28), BackColor = PANEL,
-            SmallChange = 1, LargeChange = Math.Max(1, (max - min) / 20)
+            Minimum = min, Maximum = max,
+            Location = new Point(165, 3), Size = new Size(262, 28)
         };
         var nud = new NumericUpDown
         {
             Minimum = min, Maximum = max, Location = new Point(433, 6), Width = 70,
-            BackColor = INPUT, ForeColor = FG, BorderStyle = BorderStyle.FixedSingle, TextAlign = HorizontalAlignment.Right
+            BackColor = INPUT, ForeColor = FG, BorderStyle = BorderStyle.None, TextAlign = HorizontalAlignment.Right
         };
         tb.ValueChanged += (s, e) =>
         {
@@ -194,7 +407,7 @@ class SettingsForm : Form
 
     void ColorRow(Control p, string label, Func<int> get, Action<int> set)
     {
-        var b = new Button { Width = 80, Height = 26, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand, Margin = new Padding(0, 0, 8, 0), UseVisualStyleBackColor = false };
+        var b = new RoundButton { Width = 80, Height = 26, Radius = 7, Margin = new Padding(0, 1, 8, 0) };
         b.FlatAppearance.BorderColor = BORDER;
         var hex = new Label { Width = 90, Height = 26, TextAlign = ContentAlignment.MiddleLeft, ForeColor = DIM };
         b.Click += (s, e) =>
@@ -220,7 +433,7 @@ class SettingsForm : Form
 
     Button Swatch(int argb)
     {
-        var b = new Button { Width = 30, Height = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(argb), Margin = new Padding(0, 0, 6, 6), Cursor = Cursors.Hand, UseVisualStyleBackColor = false };
+        var b = new RoundButton { Width = 30, Height = 30, Radius = 15, BackColor = Color.FromArgb(argb), Margin = new Padding(0, 0, 6, 6) };
         b.FlatAppearance.BorderColor = BORDER;
         b.FlatAppearance.MouseOverBackColor = Color.FromArgb(argb);
         b.Click += (s, e) => { C.MainColor = argb; C.Rainbow = false; RefreshControls(); Changed(); };
@@ -256,79 +469,93 @@ class SettingsForm : Form
 
     // ---------- coluna esquerda: prévia + perfis ----------
 
+    Label previewLabel;
+    readonly List<Button> previewButtons = new List<Button>();
+
     void BuildLeft()
     {
-        var title = new Label { Text = "CROSSHAIR OVERLAY", Font = new Font("Segoe UI", 14f, FontStyle.Bold), ForeColor = ACCENT, Location = new Point(14, 10), AutoSize = true, Cursor = Cursors.SizeAll };
+        var title = new Label { Text = "Crosshair Overlay", Font = Ui.Font(15f, FontStyle.Bold), ForeColor = FG, Location = new Point(58, 12), AutoSize = true };
         Controls.Add(title);
         MakeDraggable(title);
-        var credit = new Label { Text = "Feito por", ForeColor = DIM, Location = new Point(16, 40), AutoSize = true };
+        title.BackColor = Color.Transparent;
+        var credit = new Label { Text = "Feito por", ForeColor = DIM, Location = new Point(60, 43), AutoSize = true };
         var author = new Label { Text = AppInfo.Author, ForeColor = FG, Font = new Font("Segoe UI", 9f, FontStyle.Bold), AutoSize = true };
         var ver = new Label { Text = "v" + AppInfo.Version, ForeColor = DIM, AutoSize = true };
-        Controls.AddRange(new Control[] { credit, author, ver });
-        MakeDraggable(credit); MakeDraggable(author); MakeDraggable(ver);
-        author.Location = new Point(credit.Right, 40);
-        ver.Location = new Point(author.Right + 6, 40);
-        Load += (s, e) => { author.Left = credit.Right; ver.Left = author.Right + 6; };
+        var esc = escLbl = new Label { Text = "Esc fecha", ForeColor = DIM, AutoSize = true };
+        Controls.AddRange(new Control[] { credit, author, ver, esc });
+        credit.BackColor = author.BackColor = ver.BackColor = esc.BackColor = Color.Transparent;
+        if (HasHeader)
+        {
+            title.ForeColor = author.ForeColor = Color.White;
+            credit.ForeColor = ver.ForeColor = esc.ForeColor = Color.FromArgb(215, 228, 255);
+            if (!string.IsNullOrEmpty(TITLE_FONT)) title.Font = new Font(TITLE_FONT, 15f, FontStyle.Bold);
+        }
+        Load += (s, e) => { author.Location = new Point(credit.Right, 43); ver.Location = new Point(author.Right + 6, 43); LayoutPanel(); };
 
-        preview = new BufferedPanel { Location = new Point(16, 64), Size = new Size(300, 300) };
+        previewLabel = new Label { Text = "PRÉVIA", Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), ForeColor = ACCENT, AutoSize = true, BackColor = Color.Transparent };
+        Controls.Add(previewLabel);
+        preview = new BufferedPanel { Size = new Size(160, 160) };
         preview.Paint += PaintPreview;
         Controls.Add(preview);
-
-        int x = 16;
         foreach (int z in new[] { 1, 2, 4 })
         {
             int zz = z;
-            var b = Btn(z + "x", 40, (s, e) => { zoom = zz; preview.Invalidate(); });
-            b.Location = new Point(x, 370);
-            Controls.Add(b);
-            x += 44;
+            previewButtons.Add(Btn(z + "x", 50, (s, e) => { zoom = zz; preview.Invalidate(); }));
         }
         string[] bgs = { "Escuro", "Claro", "Cena" };
-        x = 146;
         for (int i = 0; i < 3; i++)
         {
             int ii = i;
-            var b = Btn(bgs[i], 54, (s, e) => { bgMode = ii; preview.Invalidate(); });
-            b.Location = new Point(x, 370);
-            Controls.Add(b);
-            x += 58;
+            previewButtons.Add(Btn(bgs[i], 50, (s, e) => { bgMode = ii; preview.Invalidate(); }));
         }
+        foreach (var b in previewButtons) { b.Font = new Font("Segoe UI", 7.5f); ((RoundButton)b).Surface = NAV; Controls.Add(b); }
+    }
 
-        Controls.Add(new Label { Text = "PERFIL ATIVO", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = ACCENT, Location = new Point(16, 414), AutoSize = true });
+    void BuildProfilesPage(FlowLayoutPanel p)
+    {
+        Header(p, "Perfil ativo");
         profileCombo = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat,
-            BackColor = INPUT, ForeColor = FG, Location = new Point(16, 436), Width = 300
+            BackColor = INPUT, ForeColor = FG, Width = 330, Font = new Font("Segoe UI", 10.5f), Margin = new Padding(0, 2, 0, 6)
         };
         profileCombo.SelectedIndexChanged += (s, e) =>
         {
             if (!suppress && profileCombo.SelectedItem != null) app.SwitchProfile((string)profileCombo.SelectedItem);
         };
-        Controls.Add(profileCombo);
+        p.Controls.Add(profileCombo);
+        Flow(p,
+            Btn("Novo", 80, (s, e) => NewProfile(false)),
+            Btn("Duplicar", 80, (s, e) => NewProfile(true)),
+            Btn("Renomear", 80, (s, e) => RenameProfile()),
+            Btn("Excluir", 80, (s, e) => DeleteProfile()));
+        Header(p, "Compartilhar mira");
+        Flow(p,
+            Btn("Exportar código", 160, (s, e) => ExportCode()),
+            Btn("Importar código", 160, (s, e) => ImportCode()));
+        Note(p, "Exportar copia um código da mira atual. O amigo cola em \"Importar código\".");
 
-        var bNew = Btn("Novo", 72, (s, e) => NewProfile(false)); bNew.Location = new Point(16, 470);
-        var bDup = Btn("Duplicar", 72, (s, e) => NewProfile(true)); bDup.Location = new Point(92, 470);
-        var bRen = Btn("Renomear", 72, (s, e) => RenameProfile()); bRen.Location = new Point(168, 470);
-        var bDel = Btn("Excluir", 72, (s, e) => DeleteProfile()); bDel.Location = new Point(244, 470);
-        var bExp = Btn("Exportar código", 148, (s, e) => ExportCode()); bExp.Location = new Point(16, 504);
-        var bImp = Btn("Importar código", 148, (s, e) => ImportCode()); bImp.Location = new Point(168, 504);
-        Controls.AddRange(new Control[] { bNew, bDup, bRen, bDel, bExp, bImp });
-
-        var help = new Label { ForeColor = DIM, Location = new Point(16, 548), Size = new Size(300, 84) };
+        Header(p, "Atalhos principais");
+        var help = new Label { ForeColor = FG, AutoSize = true, MaximumSize = new Size(RowW, 0), Font = new Font("Segoe UI", 10f), Margin = new Padding(0, 2, 0, 4) };
         refreshers.Add(() => help.Text =
             "Abrir/fechar este menu:  " + Hotkeys.ToText(app.Settings.MenuKey) +
             "\nMostrar/ocultar mira:  " + Hotkeys.ToText(app.Settings.ToggleKey) +
             "\nPróximo perfil:  " + Hotkeys.ToText(app.Settings.NextProfileKey) +
             "\nLigar/desligar auto-tecla:  " + Hotkeys.ToText(app.Settings.AutoToggleKey) +
-            "\nAnotar / mostrar senhas:  " + Hotkeys.ToText(app.Settings.NotesAddKey) + " / " + Hotkeys.ToText(app.Settings.NotesToggleKey) +
-            "");
-        Controls.Add(help);
+            "\nAnotar / mostrar / apagar senhas:  " + Hotkeys.ToText(app.Settings.NotesAddKey) + " / " + Hotkeys.ToText(app.Settings.NotesToggleKey) + " / " + Hotkeys.ToText(app.Settings.NotesDelKey) +
+            "\nTirar print / ver prints:  " + Hotkeys.ToText(app.Settings.ShotKey) + " / " + Hotkeys.ToText(app.Settings.ShotViewKey));
+        p.Controls.Add(help);
+        Note(p, "Todos os atalhos podem ser trocados nas outras abas.");
     }
 
     void PaintPreview(object sender, PaintEventArgs e)
     {
         var g = e.Graphics;
         var r = preview.ClientRectangle;
+        g.Clear(NAV);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        var clip = Ui.Round(new RectangleF(0, 0, r.Width, r.Height), 10);
+        g.SetClip(clip);
         if (bgMode == 0)
         {
             using (var b = new LinearGradientBrush(r, Color.FromArgb(52, 56, 66), Color.FromArgb(16, 18, 22), 90f)) g.FillRectangle(b, r);
@@ -432,37 +659,47 @@ class SettingsForm : Form
 
     void BuildTabs()
     {
-        string[] names = { "Forma", "Cores", "Posição", "Atalhos && Extras", "Auto-tecla", "Senhas" };
-        int[] widths = { 70, 66, 74, 122, 88, 68 };
-        int tx = 336;
+        string[] names = { "Perfis", "Forma", "Cores", "Posição", "Atalhos && Extras", "Auto-tecla", "Senhas", "Aparência" };
+        // ícones do Windows (Segoe Fluent Icons): pessoa, mira, paleta, mover, teclado, cronômetro, chave, pincel
+        string[] tabIcons = { "\uE77B", "\uE8B3", "\uE790", "\uE759", "\uE765", "\uE916", "\uE192", "\uE771" };
         for (int i = 0; i < names.Length; i++)
         {
             int idx = i;
-            var b = Btn(names[i], widths[i], (s, e) => ShowPage(idx));
-            b.Height = 34;
-            b.Location = new Point(tx, 14);
-            b.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            var b = (RoundButton)Btn(names[i], NavW - 24, (s, e) => ShowPage(idx));
+            b.Height = 40;
+            b.Radius = 10;
+            b.Glyph = tabIcons[i];
+            b.Surface = NAV;
+            b.TextAlign = ContentAlignment.MiddleLeft;
+            b.Location = new Point(12, HeaderH + 8 + i * 44);
+            b.Font = Ui.Font(10f, FontStyle.Bold);
             Controls.Add(b);
             tabButtons.Add(b);
-            tx += widths[i] + 6;
         }
+        BuildProfilesPage(NewPage());
         BuildShapePage(NewPage());
         BuildColorPage(NewPage());
         BuildPositionPage(NewPage());
         BuildExtrasPage(NewPage());
         BuildAutoPage(NewPage());
         BuildNotesPage(NewPage());
+        BuildLookPage(NewPage());
         ShowPage(0);
     }
 
-    void ShowPage(int idx)
+    public void ShowPage(int idx)
     {
+        idx = Util.Clamp(idx, 0, pages.Count - 1);
         currentPage = idx;
         for (int i = 0; i < pages.Count; i++)
         {
             pages[i].Visible = i == idx;
-            tabButtons[i].BackColor = i == idx ? ACCENT_DARK : INPUT;
-            tabButtons[i].FlatAppearance.BorderColor = i == idx ? ACCENT : BORDER;
+            var tb = (RoundButton)tabButtons[i];
+            tb.BackColor = i == idx ? SELECTED : NAV;
+            tb.FlatAppearance.MouseOverBackColor = i == idx ? SELECTED : NAVHOVER;
+            tb.ForeColor = i == idx ? FG : DIM;
+            tb.Indicator = i == idx;
+            tb.Invalidate();
         }
     }
 
@@ -621,7 +858,7 @@ class SettingsForm : Form
         {
             app.SuspendHotkeys();
             tb.Text = "Pressione as teclas...";
-            tb.BackColor = Color.FromArgb(18, 70, 50);
+            tb.BackColor = CAPTURE;
         };
         tb.Leave += (s, e) =>
         {
@@ -726,23 +963,21 @@ class SettingsForm : Form
                 (app.UpdateStatus.Length > 0 ? "\n" + app.UpdateStatus : "");
         });
         p.Controls.Add(ver);
-        Flow(p, Chk("Baixar versões novas automaticamente (GitHub e grupo)", () => app.Settings.AutoUpdate, v => { app.Settings.AutoUpdate = v; app.SaveSettings(); }));
-        var upNow = Btn("Atualizar agora", 130, (s, e) => app.UpdateNow());
+        Flow(p, Chk("Avisar quando sair versão nova (GitHub e grupo)", () => app.Settings.AutoUpdate, v => { app.Settings.AutoUpdate = v; app.SaveSettings(); }));
+        var upNow = Btn("Reiniciar e atualizar", 160, (s, e) => app.UpdateNow());
         var check = Btn("Procurar atualização", 160, (s, e) => app.CheckGitHubUpdate(true));
+        var dl = Btn("Baixar atualização", 150, (s, e) => app.DownloadOffer());
+        refreshers.Add(() => dl.Enabled = app.UpdateAvailable);
         refreshers.Add(() => upNow.Enabled = Updater.StagedBuild > BuildInfo.Build);
         if (Updater.IsAuthor)
-            Flow(p, check, upNow, Btn("Enviar esta versão ao grupo", 200, (s, e) => app.ShareUpdate(true)));
+            Flow(p, check, dl, upNow, Btn("Enviar esta versão ao grupo", 200, (s, e) => app.ShareUpdate(true)));
         else
-            Flow(p, check, upNow);
-        Note(p, "O app confere o GitHub (" + AppInfo.Repo + ") ao abrir e a cada 3 horas, e baixa sozinho quando sai versão nova. " +
+            Flow(p, check, dl, upNow);
+        Note(p, "O app confere o GitHub (" + AppInfo.Repo + ") ao abrir e a cada 3 horas. Quando sai versão nova, ele pergunta se pode baixar e, depois, se pode reiniciar para instalar. Durante o jogo ele espera você sair para perguntar. " +
                 "Pelo grupo é ainda mais rápido: quando o autor clica em \"Enviar esta versão ao grupo\", quem está na sala recebe na hora. " +
                 "A versão só é aceita se estiver assinada pelo autor, então ninguém consegue mandar um programa falso. " +
                 "Quem entra depois recebe a versão de quem já tem (o servidor guarda o arquivo por ~3 horas).");
 
-        Header(p, "Menu");
-        Slider(p, "Opacidade do menu (%)", 40, 100, () => app.Settings.MenuOpacity,
-            v => { app.Settings.MenuOpacity = v; Opacity = v / 100.0; app.SaveSettings(); });
-        Note(p, "Arraste o menu pelo título ou por qualquer área vazia. Feche no ✕ ou pelo atalho.");
 
         Header(p, "Comportamento");
         Flow(p, Chk("Ocultar a mira enquanto segura o botão direito (mirar / ADS)", () => C.HideOnRightClick, v => C.HideOnRightClick = v));
@@ -773,7 +1008,7 @@ class SettingsForm : Form
             Cursor = Cursors.Hand, TextAlign = HorizontalAlignment.Center, ShortcutsEnabled = false, Margin = new Padding(0, 3, 6, 3)
         };
         refreshers.Add(() => { if (!tb.Focused) tb.Text = Hotkeys.ToText(get()); });
-        tb.Enter += (s, e) => { app.SuspendHotkeys(); tb.Text = "Pressione uma tecla..."; tb.BackColor = Color.FromArgb(18, 70, 50); };
+        tb.Enter += (s, e) => { app.SuspendHotkeys(); tb.Text = "Pressione uma tecla..."; tb.BackColor = CAPTURE; };
         tb.Leave += (s, e) => { tb.BackColor = INPUT; tb.Text = Hotkeys.ToText(get()); app.RegisterHotkeys(); };
         tb.PreviewKeyDown += (s, e) => { e.IsInputKey = true; };
         tb.KeyDown += (s, e) =>
@@ -800,7 +1035,7 @@ class SettingsForm : Form
             Minimum = seconds ? 0.01m : 1m, Maximum = seconds ? 3600m : 10000m,
             DecimalPlaces = seconds ? 2 : 0, Increment = seconds ? 0.1m : 10m,
             Location = new Point(200, 5), Width = 90,
-            BackColor = INPUT, ForeColor = FG, BorderStyle = BorderStyle.FixedSingle, TextAlign = HorizontalAlignment.Right
+            BackColor = INPUT, ForeColor = FG, BorderStyle = BorderStyle.None, TextAlign = HorizontalAlignment.Right
         };
         decimal mul = seconds ? 1000m : 1m;
         var unit = new Label { Text = seconds ? "segundos" : "ms", Location = new Point(296, 8), AutoSize = true, ForeColor = DIM };
@@ -816,8 +1051,8 @@ class SettingsForm : Form
         string fixedLabel, Func<int> getFixed, Action<int> setFixed,
         Func<int> getMin, Action<int> setMin, Func<int> getMax, Action<int> setMax)
     {
-        var rbFixed = new RadioButton { Text = "Fixo", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
-        var rbRand = new RadioButton { Text = "Aleatório (entre mínimo e máximo)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        var rbFixed = new ModernRadio { Text = "Fixo", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        var rbRand = new ModernRadio { Text = "Aleatório (entre mínimo e máximo)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
         Flow(p, rbFixed, rbRand);
         var fixedRow = TimeRow(p, fixedLabel, seconds, getFixed, setFixed);
         var minRow = TimeRow(p, "Mínimo", seconds, getMin, setMin);
@@ -857,8 +1092,8 @@ class SettingsForm : Form
         Flow(p, Lbl("Tecla 2", 80), KeyBox(() => S.AutoKey2, v => S.AutoKey2 = v));
         Flow(p, Lbl("Tecla 3", 80), KeyBox(() => S.AutoKey3, v => S.AutoKey3 = v));
         Note(p, "Clique no campo e pressione a tecla. Backspace deixa o campo vazio (\"Nenhum\").");
-        var rbSeq = new RadioButton { Text = "Em sequência (1 → 2 → 3)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
-        var rbTog = new RadioButton { Text = "Todas juntas (combinação)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        var rbSeq = new ModernRadio { Text = "Em sequência (1 → 2 → 3)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
+        var rbTog = new ModernRadio { Text = "Todas juntas (combinação)", AutoSize = true, ForeColor = FG, Margin = new Padding(0, 4, 16, 4) };
         rbTog.CheckedChanged += (s, e) => { if (suppress) return; S.AutoTogether = rbTog.Checked; app.SaveSettings(); };
         refreshers.Add(() => { rbTog.Checked = S.AutoTogether; rbSeq.Checked = !S.AutoTogether; });
         Flow(p, rbSeq, rbTog);
@@ -896,6 +1131,74 @@ class SettingsForm : Form
                 "• As teclas vão para a janela em foco (o jogo). Enquanto esta janela de configurações " +
                 "estiver em foco, nada é enviado.\n" +
                 "• Atenção: alguns jogos com anti-cheat proíbem automação de teclas — use por sua conta e risco.");
+    }
+
+    // ---------- Aparência: posição e tema do menu ----------
+
+    void BuildLookPage(FlowLayoutPanel p)
+    {
+        var S = app.Settings;
+        Header(p, "Posição do menu");
+        string[] posNames = { "Esquerda", "Direita", "Em cima", "Embaixo", "Janela (como antes)" };
+        var row = new List<Control>();
+        for (int i = 0; i < posNames.Length; i++)
+        {
+            int idx = i;
+            var b = Btn(posNames[i], i == 4 ? 150 : 86, (s, e) => { S.MenuPos = idx; app.SaveSettings(); app.RebuildSettings(); });
+            refreshers.Add(() => { b.BackColor = Pos == idx ? ACCENT_DARK : INPUT; b.FlatAppearance.BorderColor = Pos == idx ? ACCENT : BORDER; b.ForeColor = Pos == idx ? Color.White : FG; });
+            row.Add(b);
+        }
+        Flow(p, row.ToArray());
+        Note(p, "O menu entra deslizando do lado escolhido. No modo janela ele aparece no meio da tela e dá para arrastar pelo título.");
+
+        Header(p, "Tema de cores");
+        var swatches = new List<Control>();
+        foreach (var t in Themes.All)
+        {
+            var th = t;
+            var b = new RoundButton
+            {
+                Width = 98, Height = 46, Radius = 10, BackColor = th.Bg, ForeColor = th.Accent, Text = th.Name,
+                Font = new Font("Segoe UI", 8f, FontStyle.Bold), Cursor = Cursors.Hand, Margin = new Padding(0, 0, 6, 6), UseVisualStyleBackColor = false
+            };
+            b.FlatAppearance.MouseOverBackColor = th.Input;
+            refreshers.Add(() =>
+            {
+                bool sel = S.MenuTheme == th.Name;
+                b.FlatAppearance.BorderSize = sel ? 3 : 1;
+                b.FlatAppearance.BorderColor = sel ? th.Accent : th.Border;
+            });
+            b.Click += (s, e) => { S.MenuTheme = th.Name; app.SaveSettings(); app.RebuildSettings(); };
+            swatches.Add(b);
+        }
+        Flow(p, swatches.ToArray());
+        var themeLbl = new Label { AutoSize = true, ForeColor = DIM, Margin = new Padding(0, 2, 0, 4) };
+        refreshers.Add(() => themeLbl.Text = "Tema atual: " + S.MenuTheme);
+        p.Controls.Add(themeLbl);
+
+        Header(p, "Tema próprio (mudar cada cor)");
+        Note(p, "Mude qualquer cor abaixo para criar o seu tema. Ele começa como cópia do tema atual e fica salvo como \"Personalizado\".");
+        Func<MenuTheme> cur = () => Themes.Current(S);
+        Action<Action<MenuTheme>> edit = change =>
+        {
+            var t = cur().Copy(Themes.Custom);
+            change(t);
+            Themes.SaveCustom(S, t);
+            app.SaveSettings();
+            app.RebuildSettings();
+        };
+        ColorRow(p, "Destaque", () => cur().Accent.ToArgb(), v => edit(t => t.Accent = Color.FromArgb(v)));
+        ColorRow(p, "Fundo", () => cur().Bg.ToArgb(), v => edit(t => t.Bg = Color.FromArgb(v)));
+        ColorRow(p, "Coluna das abas", () => cur().Nav.ToArgb(), v => edit(t => t.Nav = Color.FromArgb(v)));
+        ColorRow(p, "Campos e botões", () => cur().Input.ToArgb(), v => edit(t => t.Input = Color.FromArgb(v)));
+        ColorRow(p, "Bordas", () => cur().Border.ToArgb(), v => edit(t => t.Border = Color.FromArgb(v)));
+        ColorRow(p, "Texto", () => cur().Text.ToArgb(), v => edit(t => t.Text = Color.FromArgb(v)));
+        ColorRow(p, "Texto secundário", () => cur().Dim.ToArgb(), v => edit(t => t.Dim = Color.FromArgb(v)));
+        Flow(p, Btn("Voltar ao tema padrão", 170, (s, e) => { S.MenuTheme = Themes.Default.Name; app.SaveSettings(); app.RebuildSettings(); }));
+
+        Header(p, "Transparência");
+        Slider(p, "Opacidade do menu (%)", 40, 100, () => S.MenuOpacity,
+            v => { S.MenuOpacity = v; Opacity = v / 100.0; app.SaveSettings(); });
     }
 
     // ---------- Senhas ----------
@@ -1004,7 +1307,7 @@ class SettingsForm : Form
                 app.SaveSettings(); app.UpdateNotes();
             }
         }
-        Show(); Activate(); RefreshControls();
+        Show(); Activate(); Native.ForceForeground(Handle); RefreshControls();
     }
 
     void BuildNotesPage(FlowLayoutPanel p)
@@ -1067,3 +1370,4 @@ class SettingsForm : Form
                 "As anotações ficam no arquivo senhas.txt, na pasta de perfis.");
     }
 }
+

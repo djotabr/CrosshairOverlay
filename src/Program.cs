@@ -327,18 +327,11 @@ class CrosshairApp : ApplicationContext
             long b;
             if (!long.TryParse(f.Fields[0], out b)) return;
             updSeen[b] = f.SentAt;
-            if (!Settings.AutoUpdate || b <= BuildInfo.Build || b <= Updater.StagedBuild || age.TotalHours > 3) return;
-            string sha = f.Fields[1], sig = f.Fields[2];
-            UpdateStatus = "Baixando versão nova…";
-            Sync.Download(f.Url, exe =>
-            {
-                if (exe == null) { UpdateStatus = "Falha ao baixar a versão nova"; RefreshSettings(); return; }
-                if (b <= Updater.StagedBuild) return;
-                if (!Updater.Stage(exe, b, sha, sig)) { UpdateStatus = "Versão recebida com assinatura inválida — ignorada"; RefreshSettings(); return; }
-                UpdateStatus = "Versão nova baixada — instala ao fechar o app ou em \"Atualizar agora\"";
-                RefreshSettings();
-                ShowToast(AppIcon.ToBitmap(), "Atualização do Crosshair Overlay baixada", "Instala quando você fechar o app (ou: bandeja → Atualizar agora)", 6000);
-            });
+            if (!Settings.AutoUpdate || age.TotalHours > 3) return;
+            string url = f.Url;
+            var sync = Sync;
+            OfferUpdate(new Updater.Release { Build = b, Sha = f.Fields[1], Sig = f.Fields[2], Version = f.Fields.Length > 3 ? f.Fields[3] : "" },
+                done => sync.Download(url, done), false);
         }
     }
 
@@ -372,7 +365,7 @@ class CrosshairApp : ApplicationContext
         }
         updSeen[BuildInfo.Build] = DateTime.UtcNow;
         UpdateStatus = "Enviando esta versão ao grupo…"; RefreshSettings();
-        Sync.Upload("upd", BuildInfo.Build + "\n" + sha + "\n" + sig, exe, (ok, err) =>
+        Sync.Upload("upd", BuildInfo.Build + "\n" + sha + "\n" + sig + "\n" + AppInfo.Version, exe, (ok, err) =>
         {
             UpdateStatus = ok ? "Versão " + Updater.VersionText + " enviada ao grupo" : "Falha ao enviar a versão: " + err;
             if (!ok) updSeen.Remove(BuildInfo.Build);
@@ -390,26 +383,142 @@ class CrosshairApp : ApplicationContext
         if (manual) { UpdateStatus = "Procurando versão nova no GitHub…"; RefreshSettings(); }
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            long b = 0; string err = null;
-            try { b = Updater.CheckGitHub(); } catch (Exception ex) { err = ex.Message; }
+            Updater.Release r = null; string err = null;
+            try { r = Updater.LatestGitHub(); } catch (Exception ex) { err = ex.Message; }
             try
             {
                 overlay.BeginInvoke((Action)(() =>
                 {
                     ghChecking = false;
-                    if (b > 0)
-                    {
-                        UpdateStatus = "Versão nova baixada do GitHub — instala ao fechar o app ou em \"Atualizar agora\"";
-                        ShowToast(AppIcon.ToBitmap(), "Atualização do Crosshair Overlay baixada", "Instala quando você fechar o app (ou: bandeja → Atualizar agora)", 6000);
-                    }
+                    if (r != null && r.Build > BuildInfo.Build && r.Build > Updater.StagedBuild)
+                        OfferUpdate(r, done => ThreadPool.QueueUserWorkItem(__ =>
+                        {
+                            byte[] exe = null;
+                            try { exe = Updater.DownloadGitHubExe(); } catch { }
+                            try { overlay.BeginInvoke((Action)(() => done(exe))); } catch { }
+                        }), manual);
                     else if (manual)
+                    {
                         UpdateStatus = err != null ? "Não consegui falar com o GitHub: " + err
-                            : Updater.StagedBuild > BuildInfo.Build ? "Versão nova já baixada — instala ao fechar o app" : "Você já está na versão mais nova";
-                    RefreshSettings();
+                            : Updater.StagedBuild > BuildInfo.Build ? "Atualização já baixada — reinicie o app para instalar" : "Você já está na versão mais nova";
+                        RefreshSettings();
+                    }
                 }));
             }
             catch { ghChecking = false; }
         });
+    }
+
+    // ---------- atualização: pergunta antes de baixar e oferece reiniciar ----------
+
+    Updater.Release offer;                        // versão nova encontrada (ainda não baixada)
+    Action<Action<byte[]>> offerDownload;
+    long declinedBuild;                           // "Não" para esta versão: não pergunta de novo sozinho
+    bool askingUpdate, offerToastShown, restartAskPending;
+
+    public bool UpdateAvailable { get { return offer != null; } }
+
+    static string VersionLabel(Updater.Release r)
+    {
+        return (r.Version.Length > 0 ? "versão " + r.Version : "versão nova") + " (" + Updater.BuildDate(r.Build) + ")";
+    }
+
+    void OfferUpdate(Updater.Release r, Action<Action<byte[]>> download, bool manual)
+    {
+        if (r.Build <= BuildInfo.Build || r.Build <= Updater.StagedBuild) return;
+        if (offer != null && offer.Build > r.Build) return;
+        offer = r; offerDownload = download;
+        if (manual) declinedBuild = 0;
+        if (r.Build != declinedBuild) offerToastShown = false;
+        UpdateStatus = "Atualização disponível: " + VersionLabel(r);
+        RefreshSettings();
+        TryAskUpdate(manual);
+    }
+
+    // Também roda pelo timer: com o jogo em foco, espera você sair dele para perguntar.
+    void TryAskUpdate(bool now = false)
+    {
+        if (askingUpdate) return;
+        if (restartAskPending)
+        {
+            if (now || !gameFocused) AskRestart();
+            return;
+        }
+        if (offer == null || offer.Build == declinedBuild) return;
+        if (gameFocused && !now)
+        {
+            if (!offerToastShown)
+            {
+                offerToastShown = true;
+                ShowToast(AppIcon.ToBitmap(), "Atualização disponível", "Vou perguntar quando você sair do jogo", 4000);
+            }
+            return;
+        }
+        var r = offer;
+        askingUpdate = true;
+        bool yes = Ask("Saiu a " + VersionLabel(r) + " do Crosshair Overlay.\n\nQuer baixar agora?", "Atualização disponível");
+        askingUpdate = false;
+        if (!yes)
+        {
+            declinedBuild = r.Build;
+            UpdateStatus = "Atualização disponível: " + VersionLabel(r) + " — use \"Baixar atualização\" quando quiser";
+            RefreshSettings();
+            return;
+        }
+        DownloadOffer();
+    }
+
+    public void DownloadOffer()
+    {
+        if (offer == null || offerDownload == null) return;
+        var r = offer;
+        var download = offerDownload;
+        UpdateStatus = "Baixando a " + VersionLabel(r) + "…";
+        RefreshSettings();
+        download(exe =>
+        {
+            if (exe == null) { UpdateStatus = "Falha ao baixar a atualização — tente de novo em \"Baixar atualização\""; RefreshSettings(); return; }
+            if (!Updater.Stage(exe, r.Build, r.Sha, r.Sig))
+            {
+                UpdateStatus = "A versão recebida não tem a assinatura do autor — ignorada";
+                if (offer == r) offer = null;
+                RefreshSettings();
+                return;
+            }
+            if (offer == r) offer = null;
+            UpdateStatus = "Atualização baixada — reinicie o app para instalar";
+            RefreshSettings();
+            restartAskPending = true;
+            if (gameFocused) ShowToast(AppIcon.ToBitmap(), "Atualização baixada", "Vou perguntar sobre reiniciar quando você sair do jogo", 4000);
+            TryAskUpdate();
+        });
+    }
+
+    void AskRestart()
+    {
+        restartAskPending = false;
+        if (Updater.StagedBuild <= BuildInfo.Build) return;
+        askingUpdate = true;
+        bool yes = Ask("A atualização foi baixada.\n\nReiniciar o Crosshair Overlay agora para atualizar?\n\n(Se escolher Não, ela é instalada quando você fechar o app.)", "Atualização pronta");
+        askingUpdate = false;
+        if (yes) UpdateNow();
+    }
+
+    // Pergunta Sim/Não por cima de tudo (inclusive do menu e do jogo).
+    bool Ask(string text, string title)
+    {
+        var sc = CrossScreen();
+        using (var owner = new Form
+        {
+            TopMost = true, ShowInTaskbar = false, FormBorderStyle = FormBorderStyle.None, Opacity = 0,
+            StartPosition = FormStartPosition.Manual, Size = new Size(1, 1),
+            Location = new Point(sc.X + sc.Width / 2, sc.Y + sc.Height / 2)
+        })
+        {
+            owner.Show();
+            Native.ForceForeground(owner.Handle);
+            return MessageBox.Show(owner, text, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes;
+        }
     }
 
     public void UpdateNow()
@@ -455,6 +564,8 @@ class CrosshairApp : ApplicationContext
     {
         AppIcon = LoadIcon();
         Settings = Storage.LoadSettings();
+        // versões antigas usavam Ctrl+Alt+P para o print, que é o mesmo atalho de "próximo perfil"
+        if (Settings.ShotKey == Settings.NextProfileKey) Settings.ShotKey = (int)(Keys.Control | Keys.Alt | Keys.S);
         Profiles = Storage.ListProfiles();
         if (Profiles.Count == 0)
         {
@@ -480,10 +591,18 @@ class CrosshairApp : ApplicationContext
         Auto = new AutoPresser(Settings);
         AutoPresser.AllowSend = () => InGameOk;
         RestartSync();
+        SystemEvents.UserPreferenceChanged += OnWindowsThemeChanged;
         // GitHub: confere 20 s depois de abrir e depois a cada 3 horas
         ghTimer = new System.Windows.Forms.Timer { Interval = 20000 };
         ghTimer.Tick += (s, e) => { ghTimer.Interval = 3 * 3600 * 1000; CheckGitHubUpdate(false); };
         ghTimer.Start();
+        // teste: CROSSHAIR_OPENMENU=1 abre o menu logo ao iniciar
+        int testPage; if (int.TryParse(Environment.GetEnvironmentVariable("CROSSHAIR_OPENMENU"), out testPage))
+        {
+            var t = new System.Windows.Forms.Timer { Interval = 800 };
+            t.Tick += (s, e) => { t.Stop(); ToggleSettings(true); settingsForm.ShowPage(testPage - 1); };
+            t.Start();
+        }
         hk = new HotkeyWindow();
         hk.HotkeyPressed += OnHotkey;
         hk.RightButton += down =>
@@ -503,7 +622,8 @@ class CrosshairApp : ApplicationContext
         var miAuto = new ToolStripMenuItem("Auto-tecla ligado", null, (s, e) => ToggleAuto());
         var miOnly = new ToolStripMenuItem("Só mostrar com o jogo em foco", null, (s, e) => SetOnlyInGame(!Settings.OnlyInGame));
         var miShots = new ToolStripMenuItem("Ver prints", null, (s, e) => ViewShots());
-        var miUpdate = new ToolStripMenuItem("Atualizar agora", null, (s, e) => UpdateNow());
+        var miUpdate = new ToolStripMenuItem("Reiniciar e atualizar", null, (s, e) => UpdateNow());
+        var miDownload = new ToolStripMenuItem("Baixar atualização", null, (s, e) => DownloadOffer());
         miUpdate.Font = new Font(miUpdate.Font, FontStyle.Bold);
         menu.Opening += (s, e) =>
         {
@@ -519,9 +639,10 @@ class CrosshairApp : ApplicationContext
             miAuto.Checked = Auto.Running;
             miOnly.Checked = Settings.OnlyInGame;
             miUpdate.Visible = Updater.StagedBuild > BuildInfo.Build;
+            miDownload.Visible = UpdateAvailable && !miUpdate.Visible;
         };
         menu.Items.AddRange(new ToolStripItem[] {
-            miSettings, miUpdate, miToggle, miOnly, miProfiles, miAuto, miShots, new ToolStripSeparator(),
+            miSettings, miUpdate, miDownload, miToggle, miOnly, miProfiles, miAuto, miShots, new ToolStripSeparator(),
             new ToolStripMenuItem("Sair", null, (s, e) => Exit()) });
         tray = new NotifyIcon { Icon = AppIcon, Text = "Crosshair Overlay — by " + AppInfo.Author, Visible = true, ContextMenuStrip = menu };
         tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) ToggleSettings(true); };
@@ -753,6 +874,7 @@ class CrosshairApp : ApplicationContext
         if (tick % 2 == 0) UpdateHud();
         if (tick % 10 == 0) CheckGame();
         if (tick % 66 == 33 && notesShown) notesOverlay.EnsureTopMost();
+        if (tick % 66 == 50) TryAskUpdate();
         if (toastUntil != 0 && AutoPresser.Now > toastUntil) { toastUntil = 0; Native.ShowWindow(toast.Handle, Native.SW_HIDE); }
     }
 
@@ -1033,11 +1155,36 @@ class CrosshairApp : ApplicationContext
     public void ToggleSettings(bool forceShow)
     {
         if (settingsForm == null || settingsForm.IsDisposed) settingsForm = new SettingsForm(this);
-        if (settingsForm.Visible && !forceShow) { settingsForm.Hide(); return; }
+        if (settingsForm.IsOpen && !forceShow) { settingsForm.SlideOut(); return; }
         settingsForm.ReloadAll();
-        settingsForm.Show();
-        if (settingsForm.WindowState == FormWindowState.Minimized) settingsForm.WindowState = FormWindowState.Normal;
-        settingsForm.Activate();
+        settingsForm.SlideIn(CrossScreen());
+    }
+
+    // Tema "Windows 11": quando o Windows troca claro/escuro ou a cor de destaque, o menu acompanha.
+    void OnWindowsThemeChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (Settings.MenuTheme == Themes.Windows && (e.Category == UserPreferenceCategory.General || e.Category == UserPreferenceCategory.Color || e.Category == UserPreferenceCategory.VisualStyle))
+            RebuildSettings();
+    }
+
+    // Recria o menu (tema ou posição mudou), mantendo a aba e deixando aberto se estava.
+    public void RebuildSettings()
+    {
+        if (settingsForm == null || settingsForm.IsDisposed) return;
+        var old = settingsForm;
+        int page = old.CurrentPage;
+        bool open = old.Visible;
+        IntPtr prev = old.PreviousWindow;
+        overlay.BeginInvoke((Action)(() =>
+        {
+            settingsForm = new SettingsForm(this);
+            settingsForm.ReloadAll();
+            settingsForm.ShowPage(page);
+            if (open) settingsForm.OpenInstant(CrossScreen(), prev);
+            old.AllowClose = true;
+            old.Close();
+            old.Dispose();
+        }));
     }
 
     bool ProfileExists(string name)
@@ -1137,6 +1284,7 @@ class CrosshairApp : ApplicationContext
         SaveSettings();
         poll.Stop();
         SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
+        SystemEvents.UserPreferenceChanged -= OnWindowsThemeChanged;
         hk.Dispose();
         tray.Visible = false;
         tray.Dispose();

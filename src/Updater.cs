@@ -126,31 +126,46 @@ static class Updater
         catch { return false; }
     }
 
-    // Procura versão nova nos Releases do GitHub (funciona mesmo fora da sala do grupo).
-    // O release tem dois arquivos: CrosshairOverlay.exe e CrosshairOverlay.sig ("build\nsha256\nassinatura").
-    // Roda em segundo plano; devolve o build baixado (0 = nada novo) ou lança exceção.
-    public static long CheckGitHub()
+    // Versão anunciada (GitHub ou grupo).
+    public class Release { public long Build; public string Sha, Sig, Version = ""; }
+
+    static string GitHubBase { get { return "https://github.com/" + AppInfo.Repo + "/releases/latest/download/"; } }
+
+    // Consulta o último release do GitHub sem baixar o exe.
+    // CrosshairOverlay.sig = "build\nsha256\nassinatura\nversão". null = nenhum release.
+    public static Release LatestGitHub()
     {
-        string baseUrl = "https://github.com/" + AppInfo.Repo + "/releases/latest/download/";
         using (var wc = new System.Net.WebClient())
         {
             wc.Headers["User-Agent"] = "CrosshairOverlay-updater";
             string[] l;
-            try { l = wc.DownloadString(baseUrl + "CrosshairOverlay.sig").Replace("\r", "").Trim().Split('\n'); }
+            try { l = wc.DownloadString(GitHubBase + "CrosshairOverlay.sig").Replace("\r", "").Trim().Split('\n'); }
             catch (System.Net.WebException ex)
             {
                 var r = ex.Response as System.Net.HttpWebResponse;
-                if (r != null && r.StatusCode == System.Net.HttpStatusCode.NotFound) return 0;   // ainda sem releases
+                if (r != null && r.StatusCode == System.Net.HttpStatusCode.NotFound) return null;   // ainda sem releases
                 throw;
             }
             long b;
-            if (l.Length < 3 || !long.TryParse(l[0], out b)) return 0;
-            if (b <= BuildInfo.Build || b <= StagedBuild) return 0;
-            wc.Headers["User-Agent"] = "CrosshairOverlay-updater";
-            var exe = wc.DownloadData(baseUrl + "CrosshairOverlay.exe");
-            if (!Stage(exe, b, l[1], l[2])) throw new Exception("assinatura inválida");
-            return b;
+            if (l.Length < 3 || !long.TryParse(l[0], out b)) return null;
+            return new Release { Build = b, Sha = l[1], Sig = l[2], Version = l.Length > 3 ? l[3].Trim() : "" };
         }
+    }
+
+    public static byte[] DownloadGitHubExe()
+    {
+        using (var wc = new System.Net.WebClient())
+        {
+            wc.Headers["User-Agent"] = "CrosshairOverlay-updater";
+            return wc.DownloadData(GitHubBase + "CrosshairOverlay.exe");
+        }
+    }
+
+    public static string BuildDate(long build)
+    {
+        DateTime d;
+        return DateTime.TryParseExact(build.ToString(), "yyyyMMddHHmm", null, System.Globalization.DateTimeStyles.AssumeUniversal, out d)
+            ? d.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : build.ToString();
     }
 
     public static void Discard()

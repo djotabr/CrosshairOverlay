@@ -82,7 +82,10 @@ public class AppSettings
     public string GameProfiles = "";
     public bool AutoSwitchProfiles = true;
     public bool OnlyInGame = true;      // overlay só aparece com o jogo em foco (some ao minimizar/sair)
-    public int MenuOpacity = 92;        // transparência do menu (%)
+    public int MenuOpacity = 92;
+    public int MenuPos = 0;             // 0 esquerda, 1 direita, 2 em cima, 3 embaixo, 4 janela (como antes)
+    public string MenuTheme = "Windows 11";   // instalação nova: tema do Windows 11 e menu à esquerda (MenuPos = 0)
+    public int ThemeBg, ThemeNav, ThemeInput, ThemeBorder, ThemeText, ThemeDim, ThemeAccent;   // tema "Personalizado"        // transparência do menu (%)
 
     // Senhas (anotações no overlay)
     public bool NotesShow = true;
@@ -94,7 +97,7 @@ public class AppSettings
     public string SyncRoom = "";
     public string SyncName = "";
     public bool NotesDefaultGroup = true;
-    public int ShotKey = (int)(Keys.Control | Keys.Alt | Keys.P);       // tirar print e mandar ao grupo
+    public int ShotKey = (int)(Keys.Control | Keys.Alt | Keys.S);       // tirar print e mandar ao grupo
     public int ShotViewKey = (int)(Keys.Control | Keys.Alt | Keys.O);   // ver prints recebidos
     public bool AutoUpdate = true;          // baixar versões novas que chegam pelo grupo   // caixinha de anotar começa em "grupo"
     public int NotesFontSize = 15;
