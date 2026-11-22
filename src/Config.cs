@@ -83,7 +83,8 @@ public class AppSettings
     public bool AutoSwitchProfiles = true;
     public bool OnlyInGame = true;      // overlay só aparece com o jogo em foco (some ao minimizar/sair)
     public int MenuOpacity = 92;
-    public string Language = "";        // "" = automático (idioma do Windows); ou pt, en, es, fr, de
+    public string Language = "";
+    public bool TestMode = false;       // modo de testes (só vale no PC do desenvolvedor)        // "" = automático (idioma do Windows); ou pt, en, es, fr, de
     public int MenuPos = 0;             // 0 esquerda, 1 direita, 2 em cima, 3 embaixo, 4 janela (como antes)
     public string MenuTheme = "Windows 11";   // instalação nova: tema do Windows 11 e menu à esquerda (MenuPos = 0)
     public int ThemeBg, ThemeNav, ThemeInput, ThemeBorder, ThemeText, ThemeDim, ThemeAccent;   // tema "Personalizado"        // transparência do menu (%)

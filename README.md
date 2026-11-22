@@ -12,6 +12,12 @@ O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar 
 
 Uma ⭐ aqui no GitHub também ajuda.
 
+## Novidades da 2.2.1
+- **Modo de testes para o desenvolvedor:** só aparece no PC que tem a chave de assinatura das atualizações. Nos outros PCs nada muda.
+  - Com ele ligado, a mira, o painel de senhas e o contador aparecem mesmo com o jogo fechado.
+  - Um selo na tela avisa que o modo está ligado, e o app grava um log de depuração.
+  - A aba **Testes** simula avisos, prints recebidos e as perguntas de atualização, e mostra o estado do app ao vivo.
+
 ## Novidades da 2.2.0
 - **O painel de senhas no jogo segue o tema:** cores, borda, fonte e, no Windows XP, a faixa azul no título. As senhas do grupo ganham uma cor própria.
 - **Os avisos e as caixinhas também seguem o tema:** avisos do topo, caixinhas de anotar e de apagar senha e visualizador de prints. Tudo muda na hora quando você troca de tema.

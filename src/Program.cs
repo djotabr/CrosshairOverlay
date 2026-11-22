@@ -556,7 +556,93 @@ class CrosshairApp : ApplicationContext
     bool userVisible = true, rmbHidden, shownState;
     volatile bool gameFocused;
     uint fgPid; string fgExe = "", manualGame = "";
-    public bool InGameOk { get { return !Settings.OnlyInGame || gameFocused; } }
+    public bool InGameOk { get { return !Settings.OnlyInGame || gameFocused || TestMode; } }
+
+    // ---------- modo de testes (PC do desenvolvedor) ----------
+    // O PC do desenvolvedor é reconhecido pela chave de assinatura das atualizações (%APPDATA%\CrosshairOverlay\update-private.xml),
+    // que só existe onde o app é compilado. Em outros PCs o modo de testes não aparece nem liga.
+    public readonly bool IsAuthorPc = Updater.IsAuthor;
+    public bool TestMode { get { return IsAuthorPc && Settings.TestMode; } }
+    readonly OverlayForm testBadge = new OverlayForm();
+    bool badgeShown;
+    public string ForegroundExe { get { return fgExe; } }
+    public bool GameFocused { get { return gameFocused; } }
+
+    public void SetTestMode(bool on)
+    {
+        if (!IsAuthorPc) return;
+        Settings.TestMode = on;
+        SaveSettings();
+        debugToFile = on;
+        RefreshInGameVisibility();
+        UpdateTestBadge();
+        ShowToast(AppIcon.ToBitmap(), on ? "Modo de testes ligado" : "Modo de testes desligado",
+            on ? "O overlay aparece mesmo com o jogo fechado" : "O overlay volta a aparecer só com o jogo em foco", 3000);
+        RefreshSettings();
+    }
+
+    // Selo "MODO DE TESTES" embaixo da tela, para não esquecer ligado.
+    void UpdateTestBadge()
+    {
+        if (!TestMode)
+        {
+            if (badgeShown) { Native.ShowWindow(testBadge.Handle, Native.SW_HIDE); badgeShown = false; }
+            return;
+        }
+        var sc = CrossScreen();
+        var th = Themes.A;
+        using (var f = new Font(th.Font, 13f, FontStyle.Bold, GraphicsUnit.Pixel))
+        {
+            string text = "●  MODO DE TESTES  •  jogo não necessário";
+            Size sz;
+            using (var tmp = new Bitmap(1, 1)) using (var g0 = Graphics.FromImage(tmp)) sz = Size.Ceiling(g0.MeasureString(text, f));
+            using (var bmp = new Bitmap(sz.Width + 28, sz.Height + 14, PixelFormat.Format32bppArgb))
+            {
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                    using (var path = Ui.Round(new RectangleF(1, 1, bmp.Width - 3, bmp.Height - 3), (bmp.Height - 3) / 2f))
+                    {
+                        using (var b = new SolidBrush(Color.FromArgb(225, 200, 120, 0))) g.FillPath(b, path);
+                        using (var p = new Pen(Color.FromArgb(240, 255, 210, 90), 1.5f)) g.DrawPath(p, path);
+                    }
+                    g.DrawString(text, f, Brushes.White, 14, 7);
+                }
+                testBadge.SetBitmap(bmp, sc.X + (sc.Width - bmp.Width) / 2, sc.Bottom - bmp.Height - 54);
+            }
+        }
+        if (!badgeShown) { Native.ShowWindow(testBadge.Handle, Native.SW_SHOWNA); badgeShown = true; }
+        testBadge.EnsureTopMost();
+    }
+
+    // ---- simulações da aba Testes ----
+    public void TestGameToast()
+    {
+        ShowToast(AppIcon.ToBitmap(), L.T("Jogo detectado: ") + "jogo-de-teste", L.T("Perfil: ") + Settings.ActiveProfile, 3000);
+    }
+
+    public void TestReceivedShot()
+    {
+        byte[] jpg;
+        try { jpg = Shots.Capture(CrossScreen()); } catch { return; }
+        var bmp = Shots.Decode(jpg);
+        if (bmp == null) return;
+        AddShot(new Shot { Author = "Teste", Time = DateTime.Now, Image = bmp });
+        ShowToast(ThumbOf(bmp), L.T("Print de ") + "Teste", Hotkeys.ToText(Settings.ShotViewKey) + L.T(" para ver"), 5000);
+        if (Settings.AutoSound) Beeper.Play(1, Settings.AutoVolume);
+    }
+
+    // Mostra as duas perguntas da atualização sem baixar nem instalar nada.
+    public void TestUpdateDialogs()
+    {
+        var fake = new Updater.Release { Build = BuildInfo.Build + 1, Version = "9.9.9" };
+        bool a = Ask(L.T("Saiu a ") + VersionLabel(fake) + L.T(" do Crosshair Overlay.\n\nQuer baixar agora?"), L.T("Atualização disponível") + "  [teste]");
+        bool b = Ask(L.T("A atualização foi baixada.\n\nReiniciar o Crosshair Overlay agora para atualizar?\n\n(Se escolher Não, ela é instalada quando você fechar o app.)"), L.T("Atualização pronta") + "  [teste]");
+        ShowToast(AppIcon.ToBitmap(), "Teste das perguntas (nada foi baixado)", "Baixar: " + (a ? "Sim" : "Não") + "   •   Reiniciar: " + (b ? "Sim" : "Não"), 4000);
+    }
+
+    public string DebugLogPath { get { return System.IO.Path.Combine(Storage.Dir, "debug.log"); } }
     int tick;
 
     const int HK_MENU = 1, HK_TOGGLE = 2, HK_NEXT = 3, HK_AUTO = 4, HK_NOTE_ADD = 5, HK_NOTE_TOGGLE = 6, HK_NOTE_DEL = 7, HK_SHOT = 8, HK_SHOT_VIEW = 9, HK_UP = 10, HK_DOWN = 11, HK_LEFT = 12, HK_RIGHT = 13, HK_CENTER = 14;
@@ -585,6 +671,10 @@ class CrosshairApp : ApplicationContext
         NoteLines = Notes.Load();
         notesOverlay.Show();
         UpdateNotes();
+        testBadge.Show();
+        Native.ShowWindow(testBadge.Handle, Native.SW_HIDE);
+        debugToFile = TestMode;
+        UpdateTestBadge();
         toast.Show();
         Native.ShowWindow(toast.Handle, Native.SW_HIDE);
         Native.ShowWindow(hud.Handle, Native.SW_HIDE);
@@ -625,6 +715,7 @@ class CrosshairApp : ApplicationContext
         var miAuto = new ToolStripMenuItem("Auto-tecla ligado", null, (s, e) => ToggleAuto());
         var miOnly = new ToolStripMenuItem("Só mostrar com o jogo em foco", null, (s, e) => SetOnlyInGame(!Settings.OnlyInGame));
         var miShots = new ToolStripMenuItem("Ver prints", null, (s, e) => ViewShots());
+        var miTest = new ToolStripMenuItem("Modo de testes", null, (s, e) => SetTestMode(!Settings.TestMode)) { Visible = IsAuthorPc };
         var miUpdate = new ToolStripMenuItem("Reiniciar e atualizar", null, (s, e) => UpdateNow());
         var miDownload = new ToolStripMenuItem("Baixar atualização", null, (s, e) => DownloadOffer());
         miUpdate.Font = new Font(miUpdate.Font, FontStyle.Bold);
@@ -642,11 +733,13 @@ class CrosshairApp : ApplicationContext
             miToggle.Checked = userVisible;
             miAuto.Checked = Auto.Running;
             miOnly.Checked = Settings.OnlyInGame;
+            miTest.Checked = TestMode;
+            miTest.Visible = IsAuthorPc;
             miUpdate.Visible = Updater.StagedBuild > BuildInfo.Build;
             miDownload.Visible = UpdateAvailable && !miUpdate.Visible;
         };
         menu.Items.AddRange(new ToolStripItem[] {
-            miSettings, miUpdate, miDownload, miToggle, miOnly, miProfiles, miAuto, miShots, new ToolStripSeparator(),
+            miSettings, miUpdate, miDownload, miToggle, miOnly, miProfiles, miAuto, miShots, miTest, new ToolStripSeparator(),
             new ToolStripMenuItem("Sair", null, (s, e) => Exit()) });
         foreach (ToolStripItem it in menu.Items) if (it is ToolStripMenuItem) it.Tag = it.Text;   // texto em português = chave
         tray = new NotifyIcon { Icon = AppIcon, Text = L.T("Crosshair Overlay — by ") + AppInfo.Author, Visible = true, ContextMenuStrip = menu };
@@ -882,6 +975,7 @@ class CrosshairApp : ApplicationContext
 
     void OnPoll(object sender, EventArgs e)
     {
+        if (badgeShown && tick % 66 == 20) testBadge.EnsureTopMost();
         tick++;
         if (Cfg.Rainbow && tick % 2 == 0) UpdateOverlay();
         if (tick % 66 == 0 && shownState) overlay.EnsureTopMost();
@@ -927,9 +1021,16 @@ class CrosshairApp : ApplicationContext
         return game.Length > 0 && GameMap().TryGetValue(game, out p) ? p : null;
     }
 
+    static bool debugToFile;   // modo de testes: grava o log em debug.log na pasta dos dados
+
     static void DebugLog(string s)
     {
         string f = Environment.GetEnvironmentVariable("CROSSHAIR_DEBUG");
+        if (string.IsNullOrEmpty(f) && debugToFile)
+        {
+            f = System.IO.Path.Combine(Storage.Dir, "debug.log");
+            try { var fi = new System.IO.FileInfo(f); if (fi.Exists && fi.Length > 1024 * 1024) fi.Delete(); } catch { }
+        }
         if (string.IsNullOrEmpty(f)) return;
         try { System.IO.File.AppendAllText(f, DateTime.Now.ToString("HH:mm:ss.fff") + " " + s + "\r\n"); } catch { }
     }
@@ -1201,6 +1302,7 @@ class CrosshairApp : ApplicationContext
     {
         // tema pode ter mudado: painel de senhas, avisos e caixinhas acompanham
         Themes.Active = Themes.Current(Settings);
+        UpdateTestBadge();
         if (quickNote != null && !quickNote.Visible) { quickNote.Close(); quickNote = null; }
         if (deleteNotes != null && !deleteNotes.Visible) { deleteNotes.Close(); deleteNotes = null; }
         if (shotViewer != null && !shotViewer.Visible) { shotViewer.Close(); shotViewer = null; }
@@ -1326,6 +1428,7 @@ class CrosshairApp : ApplicationContext
         if (settingsForm != null && !settingsForm.IsDisposed) { settingsForm.AllowClose = true; settingsForm.Close(); }
         hud.Close();
         notesOverlay.Close();
+        testBadge.Close();
         if (quickNote != null) quickNote.Close();
         if (deleteNotes != null) deleteNotes.Close();
         if (shotViewer != null) shotViewer.Close();

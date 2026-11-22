@@ -661,9 +661,12 @@ class SettingsForm : Form
 
     void BuildTabs()
     {
-        string[] names = { L.T("Perfis"), L.T("Forma"), L.T("Cores"), L.T("Posição"), L.T("Atalhos && Extras"), L.T("Auto-tecla"), L.T("Senhas"), L.T("Aparência"), L.T("Sobre") };
+        var nameList = new List<string> { L.T("Perfis"), L.T("Forma"), L.T("Cores"), L.T("Posição"), L.T("Atalhos && Extras"), L.T("Auto-tecla"), L.T("Senhas"), L.T("Aparência"), L.T("Sobre") };
+        var iconList = new List<string> { "\uE77B", "\uE8B3", "\uE790", "\uE759", "\uE765", "\uE916", "\uE192", "\uE771", "\uE946" };
+        if (app.IsAuthorPc) { nameList.Add("Testes"); iconList.Add("\uE713"); }   // só no PC do desenvolvedor
+        string[] names = nameList.ToArray();
         // ícones do Windows (Segoe Fluent Icons): pessoa, mira, paleta, mover, teclado, cronômetro, chave, pincel
-        string[] tabIcons = { "\uE77B", "\uE8B3", "\uE790", "\uE759", "\uE765", "\uE916", "\uE192", "\uE771", "\uE946" };
+        string[] tabIcons = iconList.ToArray();
         for (int i = 0; i < names.Length; i++)
         {
             int idx = i;
@@ -687,6 +690,7 @@ class SettingsForm : Form
         BuildNotesPage(NewPage());
         BuildLookPage(NewPage());
         BuildAboutPage(NewPage());
+        if (app.IsAuthorPc) BuildTestPage(NewPage());
         ShowPage(0);
     }
 
@@ -1134,6 +1138,69 @@ class SettingsForm : Form
                 L.T("• As teclas vão para a janela em foco (o jogo). Enquanto esta janela de configurações ") +
                 L.T("estiver em foco, nada é enviado.\n") +
                 L.T("• Atenção: alguns jogos com anti-cheat proíbem automação de teclas — use por sua conta e risco."));
+    }
+
+    // ---------- Testes (só aparece no PC do desenvolvedor) ----------
+
+    readonly Timer stateTimer = new Timer { Interval = 700 };
+
+    void BuildTestPage(FlowLayoutPanel p)
+    {
+        var S = app.Settings;
+        Header(p, "Modo de testes");
+        Note(p, "Este PC foi reconhecido como o do desenvolvedor: ele tem a chave que assina as atualizações. " +
+                "Esta aba e o modo de testes só existem aqui. Nos PCs dos amigos eles não aparecem.");
+        Flow(p, Chk("Ativar modo de testes (overlay aparece mesmo com o jogo fechado)", () => app.TestMode, v => app.SetTestMode(v)));
+        Note(p, "Com o modo de testes ligado:\n" +
+                "• a mira, o painel de senhas e o contador da auto-tecla aparecem sem precisar do jogo;\n" +
+                "• um selo \"MODO DE TESTES\" fica embaixo da tela para você não esquecer ligado;\n" +
+                "• o app grava um log em debug.log, na pasta dos dados.\n" +
+                "Atenção: a auto-tecla manda as teclas para a janela em foco. Teste num Bloco de Notas, por exemplo.\n" +
+                "Também dá para ligar e desligar pelo menu da bandeja.");
+
+        Header(p, "Simular");
+        Flow(p,
+            Btn("Aviso de jogo detectado", 200, (s, e) => app.TestGameToast()),
+            Btn("Print recebido do grupo", 200, (s, e) => app.TestReceivedShot()));
+        Flow(p,
+            Btn("Perguntas de atualização", 200, (s, e) => app.TestUpdateDialogs()),
+            Btn("Ver prints", 200, (s, e) => app.ViewShots()));
+        Flow(p,
+            Btn("Caixinha de anotar", 200, (s, e) => app.QuickAddNote()),
+            Btn("Lista de apagar senha", 200, (s, e) => app.OpenDeleteNotes()));
+        Note(p, "As perguntas de atualização são só para ver: nada é baixado nem instalado. " +
+                "O print simulado é da sua tela e aparece como enviado por \"Teste\".");
+
+        Header(p, "Estado agora");
+        var state = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), Font = new Font("Consolas", 9.5f), ForeColor = FG, Margin = new Padding(0, 2, 0, 6) };
+        p.Controls.Add(state);
+        Action fill = () =>
+        {
+            state.Text =
+                "Janela em foco:   " + (app.ForegroundExe.Length > 0 ? app.ForegroundExe : "—") + "\n" +
+                "Jogo em foco:     " + (app.GameFocused ? "sim" : "não") + "\n" +
+                "Jogo detectado:   " + (app.CurrentGame.Length > 0 ? app.CurrentGame : "—") + "\n" +
+                "Overlay visível:  " + (app.InGameOk ? "sim" : "não") + (app.TestMode ? "  (modo de testes)" : "") + "\n" +
+                "Auto-tecla:       " + (app.Auto.Running ? "ligada" : "desligada") + "\n" +
+                "Sala do grupo:    " + (app.Sync == null ? "desligada" : (app.Sync.Connected ? "conectada" : app.Sync.Status) + "  •  " + app.Sync.Notes.Count + " senha(s)") + "\n" +
+                "Idioma / tema:    " + L.Code + "  /  " + S.MenuTheme + "\n" +
+                "Versão:           " + AppInfo.Version + "  (build " + BuildInfo.Build + ")";
+        };
+        fill();
+        stateTimer.Tick += (s, e) => { if (Visible && p.Visible) fill(); };
+        stateTimer.Start();
+        Disposed += (s, e) => stateTimer.Dispose();
+        Flow(p,
+            Btn("Abrir log de depuração", 200, (s, e) =>
+            {
+                try
+                {
+                    if (!System.IO.File.Exists(app.DebugLogPath)) System.IO.File.WriteAllText(app.DebugLogPath, "");
+                    Process.Start("notepad.exe", "\"" + app.DebugLogPath + "\"");
+                }
+                catch { }
+            }),
+            Btn("Abrir pasta dos dados", 200, (s, e) => { try { Process.Start("explorer.exe", "\"" + Storage.Dir + "\""); } catch { } }));
     }
 
     // ---------- Sobre: desenvolvedor, apoio, links ----------
