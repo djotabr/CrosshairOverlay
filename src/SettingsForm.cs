@@ -118,7 +118,7 @@ class SettingsForm : Form
     Rectangle ShownRect(Rectangle sc)
     {
         const int G = 10;   // folga da borda da tela: o painel "flutua"
-        int barH = Math.Min(sc.Height - G * 2, Util.Clamp((int)(sc.Height * 0.42), 470, 560));
+        int barH = Math.Min(sc.Height - G * 2, Util.Clamp((int)(sc.Height * 0.44), 500, 580));
         if (Pos == 4) barH = Math.Min(sc.Height - G * 2, BarH);
         switch (Pos)
         {
@@ -659,9 +659,9 @@ class SettingsForm : Form
 
     void BuildTabs()
     {
-        string[] names = { "Perfis", "Forma", "Cores", "Posição", "Atalhos && Extras", "Auto-tecla", "Senhas", "Aparência" };
+        string[] names = { "Perfis", "Forma", "Cores", "Posição", "Atalhos && Extras", "Auto-tecla", "Senhas", "Aparência", "Sobre" };
         // ícones do Windows (Segoe Fluent Icons): pessoa, mira, paleta, mover, teclado, cronômetro, chave, pincel
-        string[] tabIcons = { "\uE77B", "\uE8B3", "\uE790", "\uE759", "\uE765", "\uE916", "\uE192", "\uE771" };
+        string[] tabIcons = { "\uE77B", "\uE8B3", "\uE790", "\uE759", "\uE765", "\uE916", "\uE192", "\uE771", "\uE946" };
         for (int i = 0; i < names.Length; i++)
         {
             int idx = i;
@@ -684,6 +684,7 @@ class SettingsForm : Form
         BuildAutoPage(NewPage());
         BuildNotesPage(NewPage());
         BuildLookPage(NewPage());
+        BuildAboutPage(NewPage());
         ShowPage(0);
     }
 
@@ -1131,6 +1132,79 @@ class SettingsForm : Form
                 "• As teclas vão para a janela em foco (o jogo). Enquanto esta janela de configurações " +
                 "estiver em foco, nada é enviado.\n" +
                 "• Atenção: alguns jogos com anti-cheat proíbem automação de teclas — use por sua conta e risco.");
+    }
+
+    // ---------- Sobre: desenvolvedor, apoio, links ----------
+
+    static void OpenUrl(string url) { try { Process.Start(url); } catch { } }
+
+    RoundButton LinkBtn(string glyph, string text, int w, string url)
+    {
+        var b = (RoundButton)Btn(text, w, (s, e) => OpenUrl(url));
+        b.Glyph = glyph;
+        b.Height = 36;
+        b.TextAlign = ContentAlignment.MiddleLeft;
+        return b;
+    }
+
+    void BuildAboutPage(FlowLayoutPanel p)
+    {
+        Header(p, "Crosshair Overlay");
+        var info = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), ForeColor = FG, Font = Ui.Font(10f), Margin = new Padding(0, 0, 0, 6) };
+        info.Text = "Versão " + AppInfo.Version + "   •   compilada em " + Updater.BuildDate(BuildInfo.Build) +
+                    "\nFeito por " + AppInfo.Author;
+        p.Controls.Add(info);
+        Note(p, "Mira sobreposta para jogos, com auto-tecla, senhas e prints compartilhados com o grupo. " +
+                "Gratuito, com o código no GitHub. Não lê nem mexe na memória do jogo: só desenha por cima da tela.");
+
+        Header(p, "Apoie o projeto");
+        Note(p, "O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar o desenvolvimento com um PIX de qualquer valor. 💚");
+        bool hasPix = AppInfo.PixKey.Length > 0;
+        var pixLbl = new Label
+        {
+            AutoSize = true, MaximumSize = new Size(RowW, 0), Font = new Font("Consolas", 10.5f), Margin = new Padding(0, 2, 0, 6),
+            ForeColor = hasPix ? FG : DIM, Text = hasPix ? "Chave PIX: " + AppInfo.PixKey : "Chave PIX ainda não configurada."
+        };
+        var copied = new Label { AutoSize = true, MaximumSize = new Size(RowW, 0), ForeColor = ACCENT, Margin = new Padding(0, 0, 0, 4) };
+        var pix = (RoundButton)Btn("Copiar chave PIX", 200, (s, e) =>
+        {
+            try
+            {
+                Clipboard.SetText(AppInfo.PixKey);
+                copied.Text = "Chave copiada! No app do seu banco: Pix → Pagar com chave → cole. Obrigado! 💚";
+            }
+            catch { copied.Text = "Não consegui copiar — anote a chave acima."; }
+        });
+        pix.Glyph = "\uE00B";
+        pix.Height = 38;
+        pix.Font = Ui.Font(10.5f, FontStyle.Bold);
+        pix.BackColor = ACCENT;
+        pix.ForeColor = ACCENT.GetBrightness() > 0.55f ? Color.Black : Color.White;
+        pix.FlatAppearance.MouseOverBackColor = Ui.Mix(ACCENT, Color.White, 0.15);
+        pix.Enabled = hasPix;
+        Flow(p, pix);
+        p.Controls.Add(pixLbl);
+        p.Controls.Add(copied);
+        Flow(p, LinkBtn("\uE734", "Deixar uma estrela no GitHub", 250, AppInfo.RepoUrl));
+        Note(p, "A estrelinha no GitHub também ajuda: deixa o projeto mais fácil de achar.");
+
+        Header(p, "Links");
+        Flow(p,
+            LinkBtn("\uE71B", "Página do projeto", 245, AppInfo.RepoUrl),
+            LinkBtn("\uE8F2", "Novidades e versões", 245, AppInfo.RepoUrl + "/releases"));
+        Flow(p,
+            LinkBtn("\uE7BA", "Relatar um problema", 245, AppInfo.RepoUrl + "/issues/new"),
+            LinkBtn("\uE8BD", "Sugerir uma ideia", 245, AppInfo.RepoUrl + "/issues/new"));
+        Flow(p, LinkBtn("\uE77B", "Perfil do desenvolvedor", 245, AppInfo.AuthorUrl));
+        Note(p, "Para relatar um problema ou sugerir uma ideia é preciso ter uma conta (grátis) no GitHub.");
+
+        Header(p, "Informações");
+        Flow(p,
+            Btn("Procurar atualização", 170, (s, e) => { app.CheckGitHubUpdate(true); ShowPage(4); }),
+            Btn("Abrir pasta dos dados", 170, (s, e) => { try { Process.Start("explorer.exe", "\"" + Storage.Dir + "\""); } catch { } }));
+        Note(p, "Pasta dos dados (perfis, configurações, senhas e prints):\n" + Storage.Dir);
+        Note(p, "Créditos: ícones Segoe Fluent Icons (Windows) • sincronização do grupo pelo ntfy.sh • " +
+                "feito em C# com o .NET Framework que já vem no Windows.\n\n© 2026 " + AppInfo.Author + ". Todos os direitos reservados.");
     }
 
     // ---------- Aparência: posição e tema do menu ----------

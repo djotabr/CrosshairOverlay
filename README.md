@@ -4,6 +4,18 @@ Mira sobreposta para jogos, por **DJotaBR**.
 
 **Baixar:** [última versão](https://github.com/djotabr/CrosshairOverlay/releases/latest/download/CrosshairOverlay.exe). Depois de instalado, o app avisa quando sai versão nova.
 
+## Apoie o projeto 💚
+
+O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar com um PIX de qualquer valor:
+
+**Chave PIX (aleatória):** `5ae47365-057d-4fa9-ab86-91d59b9709aa`
+
+Uma ⭐ aqui no GitHub também ajuda.
+
+## Novidades da 2.0.1
+- **Aba Sobre** no menu com as informações do app e do desenvolvedor, o botão **Copiar chave PIX** para apoiar o projeto e links para a página do projeto, as novidades, relatar um problema, sugerir uma ideia e o perfil do desenvolvedor.
+- A aba também tem **Procurar atualização** e um botão para abrir a pasta dos dados.
+
 ## Novidades da 2.0.0
 
 **Menu novo**
