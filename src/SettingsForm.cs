@@ -1364,6 +1364,68 @@ class SettingsForm : Form
 
     // ---------- Senhas ----------
 
+    // Escolha do estilo do painel de senhas, com prévia de cada um sobre uma cena de jogo.
+    void BuildNotesStyleSection(FlowLayoutPanel p)
+    {
+        var S = app.Settings;
+        Header(p, L.T("Estilo do painel no jogo"));
+        var boxes = new List<Control>();
+        var pics = new List<PictureBox>();
+        for (int i = 0; i < Notes.StyleNames.Length; i++)
+        {
+            int idx = i;
+            var box = new Panel { Width = 162, Height = 120, Margin = new Padding(0, 0, 8, 8), Padding = new Padding(3), Cursor = Cursors.Hand };
+            var pic = new PictureBox { Location = new Point(3, 3), Size = new Size(156, 88), SizeMode = PictureBoxSizeMode.CenterImage, Cursor = Cursors.Hand };
+            var lbl = new Label { Text = L.T(Notes.StyleNames[i]), Location = new Point(3, 94), Size = new Size(156, 22), TextAlign = ContentAlignment.MiddleCenter, Font = Ui.Font(9.5f, FontStyle.Bold), Cursor = Cursors.Hand };
+            EventHandler pick = (s, e) => { S.NotesStyle = idx; app.SaveSettings(); app.UpdateNotes(); RefreshControls(); };
+            box.Click += pick; pic.Click += pick; lbl.Click += pick;
+            box.Controls.Add(pic); box.Controls.Add(lbl);
+            refreshers.Add(() =>
+            {
+                bool sel = S.NotesStyle == idx;
+                box.BackColor = sel ? ACCENT : INPUT;
+                lbl.ForeColor = sel ? (ACCENT.GetBrightness() > 0.6f ? Color.Black : Color.White) : FG;
+            });
+            pics.Add(pic);
+            boxes.Add(box);
+        }
+        Action renderPreviews = () =>
+        {
+            for (int i = 0; i < pics.Count; i++)
+            {
+                var old = pics[i].Image;
+                pics[i].Image = StylePreview(i, S.NotesBgOpacity);
+                if (old != null) old.Dispose();
+            }
+        };
+        renderPreviews();
+        Flow(p, boxes.ToArray());
+        Slider(p, L.T("Opacidade do fundo (%)"), 0, 100, () => S.NotesBgOpacity, v => { S.NotesBgOpacity = v; app.SaveSettings(); app.UpdateNotes(); renderPreviews(); });
+        Note(p, L.T("O fundo vale para Cartão, Legenda, Etiquetas e Linha única."));
+    }
+
+    static Bitmap StylePreview(int style, int opacity)
+    {
+        var bmp = new Bitmap(156, 88);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            // cena de jogo simplificada (céu, prédios, chão), para ver como o painel fica por cima
+            var sky = new Rectangle(0, 0, 156, 52);
+            using (var b = new LinearGradientBrush(sky, Color.FromArgb(105, 155, 210), Color.FromArgb(205, 220, 232), 90f)) g.FillRectangle(b, sky);
+            using (var b = new LinearGradientBrush(new Rectangle(0, 52, 156, 36), Color.FromArgb(150, 135, 105), Color.FromArgb(85, 75, 58), 90f)) g.FillRectangle(b, 0, 52, 156, 36);
+            using (var b = new SolidBrush(Color.FromArgb(170, 160, 145))) g.FillRectangle(b, 0, 22, 40, 30);
+            using (var b = new SolidBrush(Color.FromArgb(120, 110, 96))) g.FillRectangle(b, 110, 14, 46, 38);
+            using (var n = Notes.Render(new List<string> { "Porta 4521", "Cofre 9090" }, new List<string> { "Bunker 77 · Ana" }, L.T("GRUPO"), 13, "Ctrl+Alt+N", style, opacity))
+            {
+                float k = Math.Min(1f, Math.Min(148f / n.Width, 80f / n.Height));
+                int w = (int)(n.Width * k), h = (int)(n.Height * k);
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(n, new Rectangle((156 - w) / 2, (88 - h) / 2, w, h));
+            }
+        }
+        return bmp;
+    }
+
     TextBox Input(int w)
     {
         return new TextBox { Width = w, BackColor = INPUT, ForeColor = FG, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Segoe UI", 10f), Margin = new Padding(0, 3, 6, 3) };
@@ -1509,6 +1571,7 @@ class SettingsForm : Form
             Btn(L.T("Copiar tudo"), 110, (s, e) => { try { if (app.NoteLines.Count > 0) Clipboard.SetText(string.Join("\r\n", app.NoteLines)); } catch { } }));
         Slider(p, L.T("Tamanho do texto"), 10, 36, () => S.NotesFontSize, v => { S.NotesFontSize = v; app.SaveSettings(); app.UpdateNotes(); });
 
+        BuildNotesStyleSection(p);
         BuildGroupSection(p);
 
         Header(p, L.T("Posição do bloco"));

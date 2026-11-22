@@ -12,6 +12,17 @@ O Crosshair Overlay é gratuito. Se ele te ajuda nas partidas, considere apoiar 
 
 Uma ⭐ aqui no GitHub também ajuda.
 
+## Novidades da 2.3.0
+- **6 estilos para o painel de senhas no jogo:**
+  - **Cartão:** caixa com fundo e borda.
+  - **Só texto:** sem caixa, com contorno para ler em qualquer cenário.
+  - **Legenda:** cada senha numa faixa translúcida.
+  - **Etiquetas:** o número numa bolinha colorida.
+  - **Linha única:** tudo numa linha, tipo barra de status.
+  - **Barra lateral:** estilo HUD.
+- **Escolha com prévia** na aba **Senhas**, mostrando cada estilo sobre uma cena de jogo.
+- **Opacidade do fundo** ajustável de 0 a 100%.
+
 ## Novidades da 2.2.1
 - **Modo de testes para o desenvolvedor:** só aparece no PC que tem a chave de assinatura das atualizações. Nos outros PCs nada muda.
   - Com ele ligado, a mira, o painel de senhas e o contador aparecem mesmo com o jogo fechado.

@@ -864,7 +864,7 @@ class CrosshairApp : ApplicationContext
         var sc = CrossScreen();
         string gTitle = Sync == null ? null : L.T("GRUPO") + (Sync.Connected ? "" : L.T("  (sem conexão)"));
         var gLines = GroupNotes.Select(n => n.Text + "   · " + n.Author).ToList();
-        using (var bmp = Notes.Render(NoteLines, gLines, gTitle, Settings.NotesFontSize, Hotkeys.ToText(Settings.NotesAddKey)))
+        using (var bmp = Notes.Render(NoteLines, gLines, gTitle, Settings.NotesFontSize, Hotkeys.ToText(Settings.NotesAddKey), Settings.NotesStyle, Settings.NotesBgOpacity))
         {
             notesWidth = bmp.Width; notesHeight = bmp.Height;
             int a = Settings.NotesAnchor;
